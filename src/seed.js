@@ -1,0 +1,139 @@
+export const conditions = [
+  { id: 'light-snow', label: 'Light snow' },
+  { id: 'heavy-snow', label: 'Heavy snow' },
+  { id: 'freezing-rain', label: 'Freezing rain' },
+  { id: 'clear', label: 'Clear skies' },
+]
+
+export const temps = [-20, -15, -10, -5, 0]
+
+export const seed = {
+  storm: {
+    active: true,
+    condition: 'light-snow',
+    tempC: -10,
+    arrivalWindow: '45–75 min',
+  },
+  sites: [
+    {
+      id: 'site-northgate',
+      name: 'Northgate Plaza',
+      address: '10420 99 Ave',
+      large: true,
+      hazards: ['Overhead powerlines along the south lot line'],
+    },
+    {
+      id: 'site-pinnacle',
+      name: 'Pinnacle Industrial',
+      address: '8201 116 St',
+      large: true,
+      hazards: ['Soft ground on the east approach', 'Hidden curb at dock 3'],
+    },
+    {
+      id: 'site-riverstone',
+      name: 'Riverstone Apartments',
+      address: '9805 100 St',
+      large: false,
+      hazards: ['Icy grade on the parkade ramp'],
+    },
+    {
+      id: 'site-creekview',
+      name: 'Creekview Medical',
+      address: '11203 100 St',
+      large: false,
+      hazards: ['Overhead powerlines at the entrance canopy'],
+    },
+    {
+      id: 'site-horizon',
+      name: 'Horizon School',
+      address: '7302 97 Ave',
+      large: false,
+      hazards: ['Hidden curb at the bus loop'],
+    },
+    {
+      id: 'site-westwind',
+      name: 'Westwind Retail',
+      address: '12202 100 St',
+      large: false,
+      hazards: ['Icy grade in the drive-through lane'],
+    },
+    {
+      id: 'site-lakeland',
+      name: 'Lakeland Warehouse',
+      address: '15501 97 St',
+      large: false,
+      hazards: ['Soft ground in the overflow lot'],
+    },
+    {
+      id: 'site-cedar',
+      name: 'Cedar Court Clinic',
+      address: '10112 105 Ave',
+      large: false,
+      hazards: ['Overhead powerlines on the alley side'],
+    },
+  ],
+  operators: [
+    { id: 'op-mara', name: 'Mara Ellison', role: 'loader' },
+    { id: 'op-chris', name: 'Chris Adeyemi', role: 'loader' },
+    { id: 'op-jonah', name: 'Jonah Park', role: 'loader' },
+    { id: 'op-priya', name: 'Priya Shah', role: 'sanding' },
+    { id: 'op-drew', name: 'Drew Lang', role: 'sanding' },
+    { id: 'op-evan', name: 'Evan Brooks', role: 'haul' },
+    { id: 'op-sam', name: 'Sam Ortega', role: 'haul' },
+  ],
+  loaders: [
+    { id: 'ld-12', name: 'LD-12', lastHours: 4820.4 },
+    { id: 'ld-07', name: 'LD-07', lastHours: 3102.1 },
+    { id: 'ld-19', name: 'LD-19', lastHours: 5560.8 },
+  ],
+  implements: [
+    { id: 'imp-pusher', name: '14 ft pusher' },
+    { id: 'imp-plow', name: '12 ft angle plow' },
+    { id: 'imp-blower', name: 'Snow blower' },
+  ],
+  sanders: [
+    { id: 'st-3', name: 'ST-3', lastHours: 2210.0 },
+    { id: 'st-6', name: 'ST-6', lastHours: 1874.5 },
+  ],
+  haulTrucks: [
+    { id: 'ht-2', name: 'HT-2', lastHours: 6402.2, hasPup: true },
+    { id: 'ht-5', name: 'HT-5', lastHours: 5108.6, hasPup: false },
+  ],
+  loaderAssignments: [
+    {
+      id: 'asg-mara',
+      siteId: 'site-northgate',
+      operatorId: 'op-mara',
+      machineId: 'ld-12',
+      implementId: 'imp-pusher',
+    },
+    {
+      id: 'asg-chris',
+      siteId: 'site-northgate',
+      operatorId: 'op-chris',
+      machineId: 'ld-07',
+      implementId: 'imp-plow',
+    },
+    {
+      id: 'asg-jonah',
+      siteId: 'site-pinnacle',
+      operatorId: 'op-jonah',
+      machineId: 'ld-19',
+      implementId: 'imp-blower',
+    },
+  ],
+  sanding: {
+    operatorId: 'op-priya',
+    truckId: 'st-3',
+    stops: [
+      { id: 'sand-creek', siteId: 'site-creekview', source: 'auto' },
+      { id: 'sand-horizon', siteId: 'site-horizon', source: 'auto' },
+      { id: 'sand-west', siteId: 'site-westwind', source: 'auto' },
+    ],
+  },
+  haulQueue: [
+    { id: 'haul-pinnacle', siteId: 'site-pinnacle', operatorId: 'op-evan', truckId: 'ht-2' },
+    { id: 'haul-northgate', siteId: 'site-northgate', operatorId: 'op-evan', truckId: 'ht-2' },
+    { id: 'haul-lakeland', siteId: 'site-lakeland', operatorId: 'op-sam', truckId: 'ht-5' },
+  ],
+}
