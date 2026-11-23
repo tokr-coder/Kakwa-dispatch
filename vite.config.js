@@ -1,11 +1,14 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Relative asset paths work at the GitHub Pages project URL.
+  // Source lives in site/. The build is written to the repo root, which
+  // GitHub Pages serves from this branch.
+  root: 'site',
   base: './',
+  publicDir: 'public',
   build: {
-    outDir: 'docs',
-    emptyOutDir: true,
+    outDir: '..',
+    emptyOutDir: false,
   },
   server: {
     host: '127.0.0.1',
