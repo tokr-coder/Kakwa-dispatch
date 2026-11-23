@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en-CA">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kakwa Dispatch — Winter demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%231e4d3a' width='32' height='32' rx='6'/%3E%3Cpath fill='%23f6c445' d='M8 20h16l-2 4H10zm2-3h12l-1.2-6H11.2z'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-C4SDLKH5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DQZ44zMm.css">
+  </head>
+  <body x-data x-cloak>
+    <div class="app" x-effect="$store.demo.refreshDriverJobs()">
+      <header class="top">
+        <div class="brand">
+          <p class="mark">Kakwa</p>
+          <div>
+            <p class="product">Winter dispatch</p>
+            <p class="demo-note">Sample storm. Logs reset on refresh. Nothing is texted or billed.</p>
+          </div>
+        </div>
+        <div class="top-side">
+          <p class="who-office">Quinn · Dispatch</p>
+          <div class="pane-switch" role="group" aria-label="Show office or driver">
+            <button type="button" :class="{ 'is-on': $store.demo.pane === 'office' }" @click="$store.demo.pane = 'office'">Office</button>
+            <button type="button" :class="{ 'is-on': $store.demo.pane === 'driver' }" @click="$store.demo.pane = 'driver'">Driver</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="workspace" :data-pane="$store.demo.pane">
+        <main class="office" id="dispatch">
+          <section class="storm" aria-label="Snow event">
+            <div class="storm-status">
+              <p class="eyebrow">Snow event</p>
+              <p class="storm-state" :class="$store.demo.storm.active ? 'is-live' : 'is-off'">
+                <span x-text="$store.demo.storm.active ? 'Storm active' : 'No active storm'"></span>
+              </p>
+              <button
+                type="button"
+                class="btn btn-solid"
+                :aria-pressed="$store.demo.storm.active"
+                @click="$store.demo.storm.active = !$store.demo.storm.active"
+                x-text="$store.demo.storm.active ? 'End storm' : 'Start storm'"
+              ></button>
+            </div>
+            <div class="storm-fields">
+              <label>
+                Default condition
+                <select x-model="$store.demo.storm.condition">
+                  <template x-for="item in $store.demo.conditions" :key="item.id">
+                    <option :value="item.id" x-text="item.label"></option>
+                  </template>
+                </select>
+              </label>
+              <label>
+                Default temperature
+                <select x-model.number="$store.demo.storm.tempC">
+                  <template x-for="temp in $store.demo.temps" :key="temp">
+                    <option :value="temp" x-text="temp + '°C'"></option>
+                  </template>
+                </select>
+              </label>
+              <label class="window-field">
+                Arrival window
+                <input type="text" x-model="$store.demo.storm.arrivalWindow" maxlength="40" autocomplete="off" />
+              </label>
+            </div>
+          </section>
+
+          <section class="section" aria-labelledby="loaders-heading">
+            <div class="section-h">
+              <div>
+                <p class="eyebrow">01</p>
+                <h2 id="loaders-heading">Loaders</h2>
+                <p>Pair a loader, operator, and snow implement. A large site can take more than one operator.</p>
+              </div>
+              <button type="button" class="btn" @click="$store.demo.addLoader()">Add pairing</button>
+            </div>
+            <div class="card-list">
+              <template x-for="assignment in $store.demo.loaderAssignments" :key="assignment.id">
+                <article class="card">
+                  <div class="card-top">
+                    <div>
+                      <h3 x-text="$store.demo.site(assignment.siteId).name"></h3>
+                      <p class="muted" x-text="$store.demo.site(assignment.siteId).address"></p>
+                    </div>
+                    <div class="tags">
+                      <span class="tag" x-show="$store.demo.site(assignment.siteId).large">Large site</span>
+                      <span class="tag tag-brass" x-show="$store.demo.siteShareLabel(assignment)" x-text="$store.demo.siteShareLabel(assignment)"></span>
+                    </div>
+                  </div>
+                  <div class="fields fields-4">
+                    <label>
+                      Site
+                      <select x-model="assignment.siteId">
+                        <template x-for="site in $store.demo.sites" :key="site.id">
+                          <option :value="site.id" x-text="site.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>
+                      Operator
+                      <select x-model="assignment.operatorId">
+                        <template x-for="operator in $store.demo.operatorsForRole('loader')" :key="operator.id">
+                          <option :value="operator.id" x-text="operator.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>
+                      Loader
+                      <select x-model="assignment.machineId">
+                        <template x-for="machine in $store.demo.loaders" :key="machine.id">
+                          <option :value="machine.id" x-text="machine.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>
+                      Implement
+                      <select x-model="assignment.implementId">
+                        <template x-for="tool in $store.demo.implements" :key="tool.id">
+                          <option :value="tool.id" x-text="tool.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                  </div>
+                  <p class="warn" x-show="$store.demo.machineShareLabel(assignment)" x-text="$store.demo.machineShareLabel(assignment)"></p>
+                  <button
+                    type="button"
+                    class="text-btn"
+                    @click="$store.demo.removeLoader(assignment.id)"
+                    :disabled="$store.demo.loaderAssignments.length === 1"
+                  >Remove pairing</button>
+                </article>
+              </template>
+            </div>
+          </section>
+
+          <section class="section" aria-labelledby="sanding-heading">
+            <div class="section-h">
+              <div>
+                <p class="eyebrow">02</p>
+                <h2 id="sanding-heading">Sanding</h2>
+                <p>Auto-sanding route for recurring sites, plus on-demand calls added by the office.</p>
+              </div>
+            </div>
+            <div class="fields fields-2 sanding-assign">
+              <label>
+                Driver
+                <select x-model="$store.demo.sanding.operatorId">
+                  <template x-for="operator in $store.demo.operatorsForRole('sanding')" :key="operator.id">
+                    <option :value="operator.id" x-text="operator.name"></option>
+                  </template>
+                </select>
+              </label>
+              <label>
+                Truck
+                <select x-model="$store.demo.sanding.truckId">
+                  <template x-for="truck in $store.demo.sanders" :key="truck.id">
+                    <option :value="truck.id" x-text="truck.name"></option>
+                  </template>
+                </select>
+              </label>
+            </div>
+            <ol class="route">
+              <template x-for="(stop, index) in $store.demo.sanding.stops" :key="stop.id">
+                <li>
+                  <span class="prio" x-text="index + 1"></span>
+                  <div>
+                    <p class="row-title" x-text="$store.demo.site(stop.siteId).name"></p>
+                    <p class="muted" x-text="$store.demo.site(stop.siteId).address"></p>
+                  </div>
+                  <span class="tag" :class="stop.source === 'auto' ? 'tag-pine' : 'tag-brass'" x-text="stop.source === 'auto' ? 'Auto-sand' : 'On demand'"></span>
+                  <button type="button" class="text-btn" x-show="stop.source === 'ondemand'" @click="$store.demo.removeStop(stop.id)">Remove</button>
+                </li>
+              </template>
+            </ol>
+            <div class="add-row">
+              <label>
+                On-demand site
+                <select x-model="$store.demo.onDemandSiteId" :disabled="!$store.demo.openSandSites().length">
+                  <template x-for="site in $store.demo.openSandSites()" :key="site.id">
+                    <option :value="site.id" x-text="site.name"></option>
+                  </template>
+                </select>
+              </label>
+              <button type="button" class="btn" @click="$store.demo.addOnDemand()" :disabled="!$store.demo.openSandSites().length">Add call</button>
+            </div>
+          </section>
+
+          <section class="section" aria-labelledby="haul-heading">
+            <div class="section-h">
+              <div>
+                <p class="eyebrow">03</p>
+                <h2 id="haul-heading">Hauling</h2>
+                <p>Numbered priority. Moving a site updates that driver’s phone in the same order.</p>
+              </div>
+            </div>
+            <div class="stack">
+              <template x-for="(item, index) in $store.demo.haulQueue" :key="item.id">
+                <article class="haul-row">
+                  <p class="prio prio-lg" x-text="'#' + (index + 1)"></p>
+                  <div class="fields fields-3">
+                    <label>
+                      Site
+                      <select x-model="item.siteId">
+                        <template x-for="site in $store.demo.sites" :key="site.id">
+                          <option :value="site.id" x-text="site.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>
+                      Truck
+                      <select x-model="item.truckId">
+                        <template x-for="truck in $store.demo.haulTrucks" :key="truck.id">
+                          <option :value="truck.id" x-text="truck.hasPup ? truck.name + ' + pup' : truck.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                    <label>
+                      Operator
+                      <select x-model="item.operatorId">
+                        <template x-for="operator in $store.demo.operatorsForRole('haul')" :key="operator.id">
+                          <option :value="operator.id" x-text="operator.name"></option>
+                        </template>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="move">
+                    <button type="button" @click="$store.demo.moveHaul(index, -1)" :disabled="index === 0" :aria-label="'Move ' + $store.demo.site(item.siteId).name + ' up'">Up</button>
+                    <button type="button" @click="$store.demo.moveHaul(index, 1)" :disabled="index === $store.demo.haulQueue.length - 1" :aria-label="'Move ' + $store.demo.site(item.siteId).name + ' down'">Down</button>
+                  </div>
+                </article>
+              </template>
+            </div>
+          </section>
+
+          <section class="section readout" id="readout" aria-labelledby="readout-heading">
+            <div class="section-h">
+              <div>
+                <p class="eyebrow">Shift record</p>
+                <h2 id="readout-heading">What each machine logged</h2>
+                <p>Clock-ins from the phone land here in order. This is the shape of the later billing review.</p>
+              </div>
+            </div>
+            <div class="summary-row" x-show="$store.demo.shiftSummaries().length">
+              <template x-for="summary in $store.demo.shiftSummaries()" :key="summary.id">
+                <p class="summary-chip">
+                  <span x-text="summary.label"></span>
+                  <span class="muted" x-text="summary.detail"></span>
+                </p>
+              </template>
+            </div>
+            <p class="empty" x-show="!$store.demo.readout().length">No site logs yet. Clock in on the phone to build the shift record.</p>
+            <ol class="log" x-show="$store.demo.readout().length">
+              <template x-for="row in $store.demo.readout()" :key="row.id">
+                <li>
+                  <div>
+                    <p class="row-title" x-text="row.site"></p>
+                    <p class="muted" x-text="row.who + ' · ' + row.machine"></p>
+                  </div>
+                  <p><span class="k">In</span> <span x-text="row.timeIn"></span></p>
+                  <p><span class="k">Out</span> <span x-text="row.timeOut"></span></p>
+                  <p><span class="k">Billable</span> <span x-text="row.billable"></span></p>
+                  <p class="detail" x-text="row.detail"></p>
+                </li>
+              </template>
+            </ol>
+
+            <div class="sms" id="sms-preview">
+              <p class="eyebrow">Client SMS preview</p>
+              <p class="sms-line" x-text="$store.demo.latestSms() || $store.demo.sampleSms()"></p>
+              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Haul and sanding messages pick up queue position when a driver clocks in. The arrival window is the one on the storm bar. Nothing is sent.</p>
+              <p class="muted" x-show="$store.demo.latestSms()">Preview of the latest clock-in. Nothing is sent.</p>
+            </div>
+          </section>
+        </main>
+
+        <aside class="phone-column" id="driver-phone">
+          <div class="preview-bar">
+            <p class="eyebrow">Driver preview</p>
+            <p class="preview-help">This switch is for the walkthrough. A driver only sees their own jobs.</p>
+            <div class="seg" role="group" aria-label="Driver role">
+              <button type="button" :class="{ 'is-on': $store.demo.role === 'loader' }" @click="$store.demo.setRole('loader')">Loader</button>
+              <button type="button" :class="{ 'is-on': $store.demo.role === 'sanding' }" @click="$store.demo.setRole('sanding')">Sanding</button>
+              <button type="button" :class="{ 'is-on': $store.demo.role === 'haul' }" @click="$store.demo.setRole('haul')">Haul</button>
+            </div>
+            <label>
+              Operator
+              <select x-model="$store.demo.operatorId" @change="$store.demo.onOperatorChange()">
+                <template x-for="operator in $store.demo.operatorsForRole()" :key="operator.id">
+                  <option :value="operator.id" x-text="operator.name"></option>
+                </template>
+              </select>
+            </label>
+          </div>
+
+          <div class="bezel">
+            <div class="phone-screen">
+              <div class="status">
+                <span x-text="$store.demo.clock || '—'"></span>
+                <span>Kakwa</span>
+                <span>LTE</span>
+              </div>
+              <div class="who">
+                <p class="who-name" x-text="$store.demo.operatorName($store.demo.operatorId)"></p>
+                <p class="who-role" x-text="$store.demo.roleLabel()"></p>
+                <p class="who-machine" x-show="$store.demo.activeShift()" x-text="$store.demo.shiftMachineLabel()"></p>
+              </div>
+              <p class="toast" x-show="$store.demo.notice" x-text="$store.demo.notice"></p>
+
+              <template x-if="!$store.demo.activeShift()">
+                <section class="shift-start">
+                  <h2>Start shift</h2>
+                  <p class="phone-copy">Enter the hour meter before the first site. A reading below the last one is rejected.</p>
+                  <label>
+                    <span x-text="$store.demo.role === 'loader' ? 'Loader' : 'Truck'"></span>
+                    <select x-model="$store.demo.draftMachineId" @change="$store.demo.syncPupDefault()">
+                      <template x-for="machine in $store.demo.machinesForRole()" :key="machine.id">
+                        <option :value="machine.id" x-text="machine.name"></option>
+                      </template>
+                    </select>
+                  </label>
+                  <label x-show="$store.demo.role === 'loader'">
+                    Implement
+                    <select x-model="$store.demo.draftImplementId">
+                      <template x-for="tool in $store.demo.implements" :key="tool.id">
+                        <option :value="tool.id" x-text="tool.name"></option>
+                      </template>
+                    </select>
+                  </label>
+                  <label class="check" x-show="$store.demo.role === 'haul' && $store.demo.truckHasPup($store.demo.draftMachineId)">
+                    <input type="checkbox" x-model="$store.demo.draftPup" />
+                    Pup attached
+                  </label>
+                  <p class="meter" x-show="$store.demo.selectedMachine()">
+                    Last meter
+                    <strong x-text="$store.demo.selectedMachine().lastHours.toFixed(1)"></strong>
+                  </p>
+                  <label>
+                    Starting hours
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      step="0.1"
+                      placeholder="4821.0"
+                      x-model="$store.demo.draftStartHours"
+                      @keydown.enter="$store.demo.startShift()"
+                    />
+                  </label>
+                  <p class="form-error" x-show="$store.demo.hourError" x-text="$store.demo.hourError" role="alert"></p>
+                  <button type="button" class="clock-in" @click="$store.demo.startShift()">Start shift</button>
+                </section>
+              </template>
+
+              <template x-if="$store.demo.activeShift() && !$store.demo.selectedJob()">
+                <section class="job-list">
+                  <p class="closed" x-show="$store.demo.activeShift()?.endHours != null">
+                    Shift closed · <span x-text="$store.demo.engineHoursLabel()"></span>
+                  </p>
+                  <p class="phone-copy" x-show="!$store.demo.driverJobs.length">Dispatch has not assigned any jobs to this operator.</p>
+                  <template x-for="job in $store.demo.driverJobs" :key="job.id">
+                    <button type="button" class="job-card" @click="$store.demo.selectedJobId = job.id">
+                      <span class="job-pos" x-show="job.position" x-text="'#' + job.position"></span>
+                      <span class="job-copy">
+                        <span class="job-title" x-text="job.title"></span>
+                        <span class="job-meta" x-text="job.meta"></span>
+                      </span>
+                      <span class="job-status" :data-status="$store.demo.statusLabel(job.id)" x-text="$store.demo.statusLabel(job.id)"></span>
+                    </button>
+                  </template>
+                  <div class="end-shift" x-show="$store.demo.canLog()">
+                    <button type="button" class="text-btn light" x-show="!$store.demo.showEndShift" @click="$store.demo.showEndShift = true">End shift</button>
+                    <div x-show="$store.demo.showEndShift">
+                      <label>
+                        Ending hours
+                        <input
+                          type="number"
+                          inputmode="decimal"
+                          min="0"
+                          step="0.1"
+                          x-model="$store.demo.draftEndHours"
+                          @keydown.enter="$store.demo.endShift()"
+                        />
+                      </label>
+                      <p class="form-error" x-show="$store.demo.endError" x-text="$store.demo.endError" role="alert"></p>
+                      <button type="button" class="btn btn-light" @click="$store.demo.endShift()">Save ending hours</button>
+                    </div>
+                  </div>
+                </section>
+              </template>
+
+              <template x-if="$store.demo.activeShift() && $store.demo.selectedJob()">
+                <section class="job-detail">
+                  <button type="button" class="text-btn light back" @click="$store.demo.selectedJobId = null">All jobs</button>
+                  <div class="safety">
+                    <p class="safety-k">Site hazard</p>
+                    <template x-for="hazard in $store.demo.site($store.demo.shownJob().siteId).hazards" :key="hazard">
+                      <p class="safety-line" x-text="hazard"></p>
+                    </template>
+                  </div>
+                  <div class="detail-body">
+                    <p class="detail-pos" x-show="$store.demo.positionText($store.demo.shownJob())" x-text="$store.demo.positionText($store.demo.shownJob())"></p>
+                    <h2 x-text="$store.demo.shownJob().title"></h2>
+                    <p class="phone-copy" x-text="$store.demo.site($store.demo.shownJob().siteId).address"></p>
+
+                    <p class="billable" x-show="$store.demo.billableLabel($store.demo.shownJob().id)" x-text="$store.demo.billableLabel($store.demo.shownJob().id)"></p>
+
+                    <div class="clocks">
+                      <button
+                        type="button"
+                        class="clock-in"
+                        x-show="!$store.demo.visits[$store.demo.shownJob().id].clockIn"
+                        @click="$store.demo.clockIn($store.demo.shownJob())"
+                        :disabled="!$store.demo.canLog()"
+                      >Clock in · Arrive on site</button>
+                      <button
+                        type="button"
+                        class="clock-out"
+                        x-show="$store.demo.visits[$store.demo.shownJob().id].clockIn && !$store.demo.visits[$store.demo.shownJob().id].clockOut"
+                        @click="$store.demo.clockOut($store.demo.shownJob())"
+                        :disabled="!$store.demo.canLog()"
+                      >Clock out · Finish job</button>
+                    </div>
+
+                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'loader'">
+                      <p class="flow-label">Weather at service</p>
+                      <div class="chips">
+                        <template x-for="item in $store.demo.conditions" :key="item.id">
+                          <button
+                            type="button"
+                            class="chip"
+                            :class="{ 'is-on': $store.demo.visits[$store.demo.shownJob().id].weather === item.id }"
+                            @click="$store.demo.setWeather($store.demo.shownJob().id, item.id)"
+                            :disabled="!$store.demo.canLog()"
+                            x-text="item.label"
+                          ></button>
+                        </template>
+                      </div>
+                      <div class="chips">
+                        <template x-for="temp in $store.demo.temps" :key="temp">
+                          <button
+                            type="button"
+                            class="chip"
+                            :class="{ 'is-on': $store.demo.visits[$store.demo.shownJob().id].tempC === temp }"
+                            @click="$store.demo.setTemp($store.demo.shownJob().id, temp)"
+                            :disabled="!$store.demo.canLog()"
+                            x-text="temp + '°C'"
+                          ></button>
+                        </template>
+                      </div>
+                    </div>
+
+                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'sanding'">
+                      <p class="flow-label">Ice rock spread</p>
+                      <div class="stepper">
+                        <button type="button" aria-label="Less ice rock" @click="$store.demo.bumpIce($store.demo.shownJob().id, -0.5)" :disabled="!$store.demo.canLog()">−</button>
+                        <p>
+                          <strong x-text="Number($store.demo.visits[$store.demo.shownJob().id].iceRock).toFixed(1)"></strong>
+                          <span>yd</span>
+                        </p>
+                        <button type="button" aria-label="More ice rock" @click="$store.demo.bumpIce($store.demo.shownJob().id, 0.5)" :disabled="!$store.demo.canLog()">+</button>
+                      </div>
+                    </div>
+
+                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'haul'">
+                      <p class="flow-label">Snow loads this visit</p>
+                      <p class="load-count" x-text="$store.demo.visits[$store.demo.shownJob().id].loads"></p>
+                      <button type="button" class="load-plus" @click="$store.demo.bumpLoads($store.demo.shownJob().id, 1)" :disabled="!$store.demo.canLog()">+1 snow load</button>
+                      <button
+                        type="button"
+                        class="text-btn light"
+                        x-show="$store.demo.visits[$store.demo.shownJob().id].loads > 0"
+                        @click="$store.demo.bumpLoads($store.demo.shownJob().id, -1)"
+                        :disabled="!$store.demo.canLog()"
+                      >Remove one</button>
+                      <label>
+                        Job notes
+                        <textarea
+                          rows="3"
+                          maxlength="240"
+                          placeholder="Pile location, dump wait, gate…"
+                          x-model="$store.demo.visits[$store.demo.shownJob().id].notes"
+                          @change="$store.demo.saveNotes()"
+                          :disabled="!$store.demo.canLog()"
+                        ></textarea>
+                      </label>
+                    </div>
+                  </div>
+                </section>
+              </template>
+
+              </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </body>
+</html>
