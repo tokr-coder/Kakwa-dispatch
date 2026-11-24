@@ -1,14 +1,13 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Source lives in site/. The build is written to the repo root, which
-  // GitHub Pages serves from this branch.
+  // Source lives in site/. GitHub Actions publishes the dist folder.
   root: 'site',
   base: './',
   publicDir: 'public',
   build: {
-    outDir: '..',
-    emptyOutDir: false,
+    outDir: '../dist',
+    emptyOutDir: true,
   },
   server: {
     host: '127.0.0.1',
