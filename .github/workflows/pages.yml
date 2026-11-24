@@ -38,14 +38,5 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish Pages from GitHub Actions
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api --method PUT "repos/${{ github.repository }}/pages" \
-            -f build_type=workflow \
-            -f source[branch]="${{ github.ref_name }}" \
-            -f source[path]=/
       - id: deployment
         uses: actions/deploy-pages@v4
