@@ -1,4 +1,4 @@
-import { conditions, seed, temps } from './seed.js'
+import { seed } from './seed.js'
 
 function emptyVisit() {
   return {
@@ -9,6 +9,7 @@ function emptyVisit() {
     iceRock: 0,
     loads: 0,
     notes: '',
+    weatherNote: '',
     sms: '',
   }
 }
@@ -54,15 +55,15 @@ export function createDemoStore() {
     clock: '',
     driverJobs: [],
     blankJob: { id: '_none', kind: '', siteId: 'site-northgate', title: '', position: null },
-    conditions,
-    temps,
-    storm: data.storm,
+    drag: null,
+    dropHint: null,
     sites: data.sites,
     operators: data.operators,
     loaders: data.loaders,
     implements: data.implements,
     sanders: data.sanders,
     haulTrucks: data.haulTrucks,
+    loaderPairs: data.loaderPairs,
     loaderAssignments: data.loaderAssignments,
     sanding: data.sanding,
     haulQueue: data.haulQueue,
@@ -103,10 +104,6 @@ export function createDemoStore() {
 
     implementName(id) {
       return this.implements.find((item) => item.id === id)?.name ?? ''
-    },
-
-    conditionLabel(id) {
-      return this.conditions.find((item) => item.id === id)?.label ?? 'Not logged'
     },
 
     roleLabel() {
@@ -150,8 +147,9 @@ export function createDemoStore() {
     applyDraftFromAssignment() {
       if (this.role === 'loader') {
         const assignment = this.loaderAssignments.find((item) => item.operatorId === this.operatorId)
-        this.draftMachineId = assignment?.machineId ?? this.loaders[0].id
-        this.draftImplementId = assignment?.implementId ?? this.implements[0].id
+        const pair = this.loaderPairs.find((item) => item.operatorId === this.operatorId)
+        this.draftMachineId = assignment?.machineId ?? pair?.machineId ?? this.loaders[0].id
+        this.draftImplementId = assignment?.implementId ?? pair?.implementId ?? this.implements[0].id
       } else if (this.role === 'sanding') {
         this.draftMachineId = this.sanding.operatorId === this.operatorId
           ? this.sanding.truckId
@@ -185,36 +183,154 @@ export function createDemoStore() {
       if (!this.shifts[this.operatorId]) this.applyDraftFromAssignment()
     },
 
-    siteShareLabel(assignment) {
-      const count = this.loaderAssignments.filter((item) => item.siteId === assignment.siteId).length
-      if (count < 2) return ''
-      return `${count} operators on this site`
+    assignmentsForSite(siteId) {
+      return this.loaderAssignments.filter((item) => item.siteId === siteId)
     },
 
-    machineShareLabel(assignment) {
-      const names = this.loaderAssignments
-        .filter((item) => item.machineId === assignment.machineId && item.id !== assignment.id)
-        .map((item) => this.operatorName(item.operatorId))
-      if (!names.length) return ''
-      return `${this.findMachine(assignment.machineId).name} is also paired with ${names.join(', ')}`
+    machineAssigned(machineId) {
+      return this.loaderAssignments.some((item) => item.machineId === machineId)
     },
 
-    addLoader() {
+    operatorAssigned(operatorId) {
+      return this.loaderAssignments.some((item) => item.operatorId === operatorId)
+    },
+
+    siteNameForMachine(machineId) {
+      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
+      return assignment ? this.site(assignment.siteId).name : ''
+    },
+
+    operatorPairText(operator) {
+      const usualMachine = this.findMachine(operator.usualMachineId)
+      const usual = `${usualMachine.name} · ${this.implementName(operator.usualImplementId)}`
+      const pair = this.loaderPairs.find((item) => item.operatorId === operator.id)
+      if (!pair) return `Usual ${usual} · not paired`
+      const now = `${this.findMachine(pair.machineId).name} · ${this.implementName(pair.implementId)}`
+      if (pair.machineId === operator.usualMachineId) return `Paired · ${now}`
+      return `Now ${now} · usual ${usual}`
+    },
+
+    assignmentLabel(assignment) {
+      return `${this.operatorName(assignment.operatorId)} · ${this.findMachine(assignment.machineId).name} · ${this.implementName(assignment.implementId)}`
+    },
+
+    clearAssignmentForMachine(machineId) {
+      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
+      if (!assignment) return
+      this.loaderAssignments = this.loaderAssignments.filter((item) => item.id !== assignment.id)
+      if (this.selectedJobId === assignment.id) this.selectedJobId = null
+    },
+
+    refreshLoaderDraft(operatorId) {
+      if (this.role !== 'loader' || this.operatorId !== operatorId || this.shifts[operatorId]) return
+      this.applyDraftFromAssignment()
+    },
+
+    pairOperatorWithMachine(operatorId, machineId) {
+      const machine = this.loaderPairs.find((item) => item.machineId === machineId)
+      if (!machine || machine.operatorId === operatorId) return
+      const displaced = machine.operatorId
+      const previous = this.loaderPairs.find((item) => item.operatorId === operatorId)
+      if (previous && previous.machineId !== machineId) {
+        previous.operatorId = null
+        this.clearAssignmentForMachine(previous.machineId)
+      }
+      machine.operatorId = operatorId
+      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
+      if (assignment) {
+        assignment.operatorId = operatorId
+        assignment.implementId = machine.implementId
+      }
+      this.refreshLoaderDraft(operatorId)
+      if (displaced) this.refreshLoaderDraft(displaced)
+    },
+
+    assignPairToSite(machineId, siteId) {
+      const pair = this.loaderPairs.find((item) => item.machineId === machineId)
+      if (!pair?.operatorId || !this.site(siteId)) return
+      const existing = this.loaderAssignments.find((item) => item.machineId === machineId)
+      if (existing) {
+        existing.siteId = siteId
+        existing.operatorId = pair.operatorId
+        existing.implementId = pair.implementId
+        return
+      }
       const id = `asg-${Math.random().toString(36).slice(2, 8)}`
       this.loaderAssignments.push({
         id,
-        siteId: 'site-riverstone',
-        operatorId: 'op-mara',
-        machineId: 'ld-12',
-        implementId: 'imp-pusher',
+        siteId,
+        operatorId: pair.operatorId,
+        machineId,
+        implementId: pair.implementId,
       })
       this.ensureVisit(id)
     },
 
-    removeLoader(id) {
-      if (this.loaderAssignments.length <= 1) return
-      this.loaderAssignments = this.loaderAssignments.filter((item) => item.id !== id)
-      if (this.selectedJobId === id) this.selectedJobId = null
+    unassignMachine(machineId) {
+      const operatorId = this.loaderAssignments.find((item) => item.machineId === machineId)?.operatorId
+      this.clearAssignmentForMachine(machineId)
+      if (operatorId) this.refreshLoaderDraft(operatorId)
+    },
+
+    dragLabel() {
+      if (!this.drag) return ''
+      if (this.drag.type === 'operator') return this.operatorName(this.drag.id)
+      const pair = this.loaderPairs.find((item) => item.machineId === this.drag.id)
+      if (!pair) return ''
+      const who = pair.operatorId ? this.operatorName(pair.operatorId) : 'Open machine'
+      return `${this.findMachine(pair.machineId).name} · ${who}`
+    },
+
+    zoneAt(x, y) {
+      const under = document.elementFromPoint(x, y)
+      const zone = under?.closest('[data-drop]')
+      if (!zone) return null
+      return { kind: zone.dataset.drop, id: zone.dataset.id }
+    },
+
+    beginPointerDrag(event, type, id) {
+      if (event.button != null && event.button !== 0) return
+      if (event.target.closest('button, a, input, textarea, select')) return
+      event.preventDefault()
+      const source = event.currentTarget
+      const startX = event.clientX
+      const startY = event.clientY
+      this.drag = { type, id, x: startX, y: startY, active: false }
+      const move = (pointerEvent) => {
+        if (!this.drag) return
+        this.drag.x = pointerEvent.clientX
+        this.drag.y = pointerEvent.clientY
+        if (!this.drag.active && Math.hypot(pointerEvent.clientX - startX, pointerEvent.clientY - startY) > 8) {
+          this.drag.active = true
+          source.style.pointerEvents = 'none'
+        }
+        this.dropHint = this.drag.active ? this.zoneAt(pointerEvent.clientX, pointerEvent.clientY) : null
+      }
+      const up = (pointerEvent) => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        if (this.drag?.active) {
+          const zone = this.zoneAt(pointerEvent.clientX, pointerEvent.clientY)
+          if (zone) this.finishDrop(zone.kind, zone.id)
+        }
+        source.style.pointerEvents = ''
+        this.drag = null
+        this.dropHint = null
+      }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+    },
+
+    finishDrop(kind, id) {
+      const drag = this.drag
+      if (!drag) return
+      if (kind === 'machine' && drag.type === 'operator') this.pairOperatorWithMachine(drag.id, id)
+      if (kind === 'operator' && drag.type === 'machine') this.pairOperatorWithMachine(id, drag.id)
+      if (kind !== 'site') return
+      const machineId = drag.type === 'machine'
+        ? drag.id
+        : this.loaderPairs.find((item) => item.operatorId === drag.id)?.machineId
+      if (machineId) this.assignPairToSite(machineId, id)
     },
 
     openSandSites() {
@@ -417,7 +533,7 @@ export function createDemoStore() {
     composeSms(job, clockIn) {
       const site = this.site(job.siteId)
       const time = formatTime(clockIn).replace(/\.$/, '')
-      const windowText = this.storm.arrivalWindow.trim() || 'the window on the storm bar'
+      const windowText = '45–75 min'
       let place = 'Loader is on site.'
       if (job.kind === 'haul') {
         const position = this.haulQueue.findIndex((item) => item.id === job.id) + 1
@@ -434,10 +550,6 @@ export function createDemoStore() {
       const visit = this.ensureVisit(job.id)
       if (visit.clockIn) return
       visit.clockIn = new Date().toISOString()
-      if (job.kind === 'loader') {
-        visit.weather = visit.weather || this.storm.condition
-        visit.tempC = visit.tempC == null ? this.storm.tempC : visit.tempC
-      }
       visit.sms = this.composeSms(job, visit.clockIn)
       this.flash('Saved on this phone')
     },
@@ -450,18 +562,10 @@ export function createDemoStore() {
       this.flash('Saved on this phone')
     },
 
-    setWeather(id, weather) {
-      if (!this.canLog()) return
-      const visit = this.ensureVisit(id)
-      visit.weather = weather
-      if (visit.tempC == null) visit.tempC = this.storm.tempC
-      this.flash('Saved on this phone')
-    },
-
-    setTemp(id, temp) {
-      if (!this.canLog()) return
-      this.ensureVisit(id).tempC = temp
-      this.flash('Saved on this phone')
+    saveWeatherNote(job) {
+      const visit = this.visits[job?.id]
+      if (!visit?.clockOut) return
+      this.flash(visit.weatherNote.trim() ? 'Weather note kept on this phone' : 'Weather note cleared')
     },
 
     bumpIce(id, delta) {
@@ -497,15 +601,17 @@ export function createDemoStore() {
     },
 
     detailFor(job, visit) {
-      if (job.kind === 'loader') {
-        if (!visit.weather) return 'Weather not logged'
-        const temp = visit.tempC == null ? '' : `, ${visit.tempC}°C`
-        return `${this.conditionLabel(visit.weather)}${temp}`
+      let base = ''
+      if (job.kind === 'sanding') base = `${Number(visit.iceRock).toFixed(1)} yd ice rock`
+      if (job.kind === 'haul') {
+        const notes = visit.notes.trim() ? ` · ${visit.notes.trim()}` : ''
+        const noun = visit.loads === 1 ? 'load' : 'loads'
+        base = `${visit.loads} ${noun}${notes}`
       }
-      if (job.kind === 'sanding') return `${Number(visit.iceRock).toFixed(1)} yd ice rock`
-      const notes = visit.notes.trim() ? ` · ${visit.notes.trim()}` : ''
-      const noun = visit.loads === 1 ? 'load' : 'loads'
-      return `${visit.loads} ${noun}${notes}`
+      const weather = (visit.weatherNote || '').trim()
+      if (weather && base) return `${base} · ${weather}`
+      if (weather) return weather
+      return base || 'Weather not logged'
     },
 
     machineSummary(job) {
@@ -567,8 +673,7 @@ export function createDemoStore() {
     },
 
     sampleSms() {
-      const windowText = this.storm.arrivalWindow.trim() || '45–75 min'
-      return `Kakwa: Arrived at Pinnacle Industrial at 6:42 p.m. You are #1 in the haul queue. Estimated window ${windowText}.`
+      return 'Kakwa: Arrived at Pinnacle Industrial at 6:42 p.m. You are #1 in the haul queue. Estimated window 45–75 min.'
     },
   }
 }

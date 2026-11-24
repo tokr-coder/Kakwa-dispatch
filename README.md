@@ -1,6 +1,6 @@
 # Kakwa Dispatch
 
-Phase 0 winter demo. One Alpine.js page shares a sample storm between the office board and a driver phone.
+Phase 0 winter demo. One Alpine.js page shares loader pairings, routes, and the driver phone.
 
 ```sh
 npm install

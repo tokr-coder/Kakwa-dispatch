@@ -1,19 +1,4 @@
-export const conditions = [
-  { id: 'light-snow', label: 'Light snow' },
-  { id: 'heavy-snow', label: 'Heavy snow' },
-  { id: 'freezing-rain', label: 'Freezing rain' },
-  { id: 'clear', label: 'Clear skies' },
-]
-
-export const temps = [-20, -15, -10, -5, 0]
-
 export const seed = {
-  storm: {
-    active: true,
-    condition: 'light-snow',
-    tempC: -10,
-    arrivalWindow: '45–75 min',
-  },
   sites: [
     {
       id: 'site-northgate',
@@ -73,9 +58,9 @@ export const seed = {
     },
   ],
   operators: [
-    { id: 'op-mara', name: 'Mara Ellison', role: 'loader' },
-    { id: 'op-chris', name: 'Chris Adeyemi', role: 'loader' },
-    { id: 'op-jonah', name: 'Jonah Park', role: 'loader' },
+    { id: 'op-mara', name: 'Mara Ellison', role: 'loader', usualMachineId: 'ld-12', usualImplementId: 'imp-pusher' },
+    { id: 'op-chris', name: 'Chris Adeyemi', role: 'loader', usualMachineId: 'ld-07', usualImplementId: 'imp-plow' },
+    { id: 'op-jonah', name: 'Jonah Park', role: 'loader', usualMachineId: 'ld-19', usualImplementId: 'imp-blower' },
     { id: 'op-priya', name: 'Priya Shah', role: 'sanding' },
     { id: 'op-drew', name: 'Drew Lang', role: 'sanding' },
     { id: 'op-evan', name: 'Evan Brooks', role: 'haul' },
@@ -98,6 +83,11 @@ export const seed = {
   haulTrucks: [
     { id: 'ht-2', name: 'HT-2', lastHours: 6402.2, hasPup: true },
     { id: 'ht-5', name: 'HT-5', lastHours: 5108.6, hasPup: false },
+  ],
+  loaderPairs: [
+    { machineId: 'ld-12', implementId: 'imp-pusher', operatorId: 'op-mara' },
+    { machineId: 'ld-07', implementId: 'imp-plow', operatorId: 'op-chris' },
+    { machineId: 'ld-19', implementId: 'imp-blower', operatorId: 'op-jonah' },
   ],
   loaderAssignments: [
     {

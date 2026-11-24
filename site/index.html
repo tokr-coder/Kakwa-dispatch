@@ -19,7 +19,7 @@
           <p class="mark">Kakwa</p>
           <div>
             <p class="product">Winter dispatch</p>
-            <p class="demo-note">Sample storm. Logs reset on refresh. Nothing is texted or billed.</p>
+            <p class="demo-note">Sample data. Logs reset on refresh. Nothing is texted or billed.</p>
           </div>
         </div>
         <div class="top-side">
@@ -33,107 +33,80 @@
 
       <div class="workspace" :data-pane="$store.demo.pane">
         <main class="office" id="dispatch">
-          <section class="storm" aria-label="Snow event">
-            <div class="storm-status">
-              <p class="eyebrow">Snow event</p>
-              <p class="storm-state" :class="$store.demo.storm.active ? 'is-live' : 'is-off'">
-                <span x-text="$store.demo.storm.active ? 'Storm active' : 'No active storm'"></span>
-              </p>
-              <button
-                type="button"
-                class="btn btn-solid"
-                :aria-pressed="$store.demo.storm.active"
-                @click="$store.demo.storm.active = !$store.demo.storm.active"
-                x-text="$store.demo.storm.active ? 'End storm' : 'Start storm'"
-              ></button>
-            </div>
-            <div class="storm-fields">
-              <label>
-                Default condition
-                <select x-model="$store.demo.storm.condition">
-                  <template x-for="item in $store.demo.conditions" :key="item.id">
-                    <option :value="item.id" x-text="item.label"></option>
-                  </template>
-                </select>
-              </label>
-              <label>
-                Default temperature
-                <select x-model.number="$store.demo.storm.tempC">
-                  <template x-for="temp in $store.demo.temps" :key="temp">
-                    <option :value="temp" x-text="temp + '°C'"></option>
-                  </template>
-                </select>
-              </label>
-              <label class="window-field">
-                Arrival window
-                <input type="text" x-model="$store.demo.storm.arrivalWindow" maxlength="40" autocomplete="off" />
-              </label>
-            </div>
-          </section>
-
           <section class="section" aria-labelledby="loaders-heading">
             <div class="section-h">
               <div>
                 <p class="eyebrow">01</p>
                 <h2 id="loaders-heading">Loaders</h2>
-                <p>Pair a loader, operator, and snow implement. A large site can take more than one operator.</p>
+                <p>Operators start on the machine they usually run. Drag an operator onto a machine, or a machine onto an operator, to change the pair. Then drag the pair onto a site.</p>
               </div>
-              <button type="button" class="btn" @click="$store.demo.addLoader()">Add pairing</button>
             </div>
-            <div class="card-list">
-              <template x-for="assignment in $store.demo.loaderAssignments" :key="assignment.id">
-                <article class="card">
+            <div class="pair-board">
+              <div>
+                <p class="board-label">Machines</p>
+                <div class="stack">
+                  <template x-for="pair in $store.demo.loaderPairs" :key="pair.machineId">
+                    <article
+                      class="drag-card"
+                      :class="{
+                        'is-assigned': $store.demo.machineAssigned(pair.machineId),
+                        'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'machine' && $store.demo.dropHint.id === pair.machineId
+                      }"
+                      data-drop="machine"
+                      :data-id="pair.machineId"
+                      @pointerdown="$store.demo.beginPointerDrag($event, 'machine', pair.machineId)"
+                    >
+                      <p class="drag-title" x-text="$store.demo.findMachine(pair.machineId).name"></p>
+                      <p x-text="$store.demo.implementName(pair.implementId)"></p>
+                      <p class="muted" x-text="pair.operatorId ? $store.demo.operatorName(pair.operatorId) : 'No operator'"></p>
+                      <span class="tag" x-show="$store.demo.siteNameForMachine(pair.machineId)" x-text="$store.demo.siteNameForMachine(pair.machineId)"></span>
+                    </article>
+                  </template>
+                </div>
+              </div>
+              <div>
+                <p class="board-label">Operators</p>
+                <div class="stack">
+                  <template x-for="operator in $store.demo.operatorsForRole('loader')" :key="operator.id">
+                    <article
+                      class="drag-card"
+                      :class="{
+                        'is-assigned': $store.demo.operatorAssigned(operator.id),
+                        'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === operator.id
+                      }"
+                      data-drop="operator"
+                      :data-id="operator.id"
+                      @pointerdown="$store.demo.beginPointerDrag($event, 'operator', operator.id)"
+                    >
+                      <p class="drag-title" x-text="operator.name"></p>
+                      <p class="muted" x-text="$store.demo.operatorPairText(operator)"></p>
+                      <span class="tag" x-show="$store.demo.operatorAssigned(operator.id)">On a site</span>
+                    </article>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <p class="board-label sites-label">Sites</p>
+            <div class="site-board">
+              <template x-for="site in $store.demo.sites" :key="site.id">
+                <article
+                  class="site-drop"
+                  :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'site' && $store.demo.dropHint.id === site.id }"
+                  data-drop="site"
+                  :data-id="site.id"
+                >
                   <div class="card-top">
-                    <div>
-                      <h3 x-text="$store.demo.site(assignment.siteId).name"></h3>
-                      <p class="muted" x-text="$store.demo.site(assignment.siteId).address"></p>
-                    </div>
-                    <div class="tags">
-                      <span class="tag" x-show="$store.demo.site(assignment.siteId).large">Large site</span>
-                      <span class="tag tag-brass" x-show="$store.demo.siteShareLabel(assignment)" x-text="$store.demo.siteShareLabel(assignment)"></span>
-                    </div>
+                    <h3 x-text="site.name"></h3>
+                    <span class="tag" x-show="site.large">Large site</span>
                   </div>
-                  <div class="fields fields-4">
-                    <label>
-                      Site
-                      <select x-model="assignment.siteId">
-                        <template x-for="site in $store.demo.sites" :key="site.id">
-                          <option :value="site.id" x-text="site.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                    <label>
-                      Operator
-                      <select x-model="assignment.operatorId">
-                        <template x-for="operator in $store.demo.operatorsForRole('loader')" :key="operator.id">
-                          <option :value="operator.id" x-text="operator.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                    <label>
-                      Loader
-                      <select x-model="assignment.machineId">
-                        <template x-for="machine in $store.demo.loaders" :key="machine.id">
-                          <option :value="machine.id" x-text="machine.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                    <label>
-                      Implement
-                      <select x-model="assignment.implementId">
-                        <template x-for="tool in $store.demo.implements" :key="tool.id">
-                          <option :value="tool.id" x-text="tool.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                  </div>
-                  <p class="warn" x-show="$store.demo.machineShareLabel(assignment)" x-text="$store.demo.machineShareLabel(assignment)"></p>
-                  <button
-                    type="button"
-                    class="text-btn"
-                    @click="$store.demo.removeLoader(assignment.id)"
-                    :disabled="$store.demo.loaderAssignments.length === 1"
-                  >Remove pairing</button>
+                  <p class="muted" x-text="site.address"></p>
+                  <template x-for="assignment in $store.demo.assignmentsForSite(site.id)" :key="assignment.id">
+                    <div class="pair-pill">
+                      <span x-text="$store.demo.assignmentLabel(assignment)"></span>
+                      <button type="button" class="text-btn" @pointerdown.stop @click="$store.demo.unassignMachine(assignment.machineId)">Unassign</button>
+                    </div>
+                  </template>
+                  <p class="muted drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a pair here</p>
                 </article>
               </template>
             </div>
@@ -273,7 +246,7 @@
             <div class="sms" id="sms-preview">
               <p class="eyebrow">Client SMS preview</p>
               <p class="sms-line" x-text="$store.demo.latestSms() || $store.demo.sampleSms()"></p>
-              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Haul and sanding messages pick up queue position when a driver clocks in. The arrival window is the one on the storm bar. Nothing is sent.</p>
+              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Haul and sanding messages pick up queue position when a driver clocks in. Nothing is sent.</p>
               <p class="muted" x-show="$store.demo.latestSms()">Preview of the latest clock-in. Nothing is sent.</p>
             </div>
           </section>
@@ -427,32 +400,17 @@
                       >Clock out · Finish job</button>
                     </div>
 
-                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'loader'">
-                      <p class="flow-label">Weather at service</p>
-                      <div class="chips">
-                        <template x-for="item in $store.demo.conditions" :key="item.id">
-                          <button
-                            type="button"
-                            class="chip"
-                            :class="{ 'is-on': $store.demo.visits[$store.demo.shownJob().id].weather === item.id }"
-                            @click="$store.demo.setWeather($store.demo.shownJob().id, item.id)"
-                            :disabled="!$store.demo.canLog()"
-                            x-text="item.label"
-                          ></button>
-                        </template>
-                      </div>
-                      <div class="chips">
-                        <template x-for="temp in $store.demo.temps" :key="temp">
-                          <button
-                            type="button"
-                            class="chip"
-                            :class="{ 'is-on': $store.demo.visits[$store.demo.shownJob().id].tempC === temp }"
-                            @click="$store.demo.setTemp($store.demo.shownJob().id, temp)"
-                            :disabled="!$store.demo.canLog()"
-                            x-text="temp + '°C'"
-                          ></button>
-                        </template>
-                      </div>
+                    <div class="workflow" x-show="$store.demo.visits[$store.demo.shownJob().id].clockOut">
+                      <label>
+                        Weather you saw
+                        <textarea
+                          rows="2"
+                          maxlength="160"
+                          placeholder="heavy snow, drifting"
+                          x-model="$store.demo.visits[$store.demo.shownJob().id].weatherNote"
+                          @change="$store.demo.saveWeatherNote($store.demo.shownJob())"
+                        ></textarea>
+                      </label>
                     </div>
 
                     <div class="workflow" x-show="$store.demo.shownJob().kind === 'sanding'">
@@ -499,6 +457,13 @@
         </aside>
       </div>
     </div>
+    <p
+      class="drag-ghost"
+      x-show="$store.demo.drag && $store.demo.drag.active"
+      x-cloak
+      x-text="$store.demo.dragLabel()"
+      :style="$store.demo.drag ? 'left:' + $store.demo.drag.x + 'px;top:' + $store.demo.drag.y + 'px' : ''"
+    ></p>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
