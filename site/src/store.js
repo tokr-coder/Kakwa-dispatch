@@ -200,18 +200,19 @@ export function createDemoStore() {
       return assignment ? this.site(assignment.siteId).name : ''
     },
 
-    operatorPairText(operator) {
-      const usual = this.findMachine(operator.usualMachineId)
-      const pair = this.loaderPairs.find((item) => item.operatorId === operator.id)
-      if (!pair) return `Usual ${usual.name}`
-      const now = this.findMachine(pair.machineId)
-      if (pair.machineId === operator.usualMachineId) return `${now.name} · ${this.implementName(pair.implementId)}`
-      return `${now.name} · usual ${usual.name}`
+    freeLoaderOperators() {
+      const taken = new Set(this.loaderPairs.map((item) => item.operatorId).filter(Boolean))
+      return this.operatorsForRole('loader').filter((operator) => !taken.has(operator.id))
     },
 
-    machineCardLine(pair) {
-      const who = pair.operatorId ? this.operatorName(pair.operatorId).split(' ')[0] : 'Open'
-      return `${this.implementName(pair.implementId)} · ${who}`
+    operatorSeatText(operatorId) {
+      const operator = this.operators.find((item) => item.id === operatorId)
+      if (!operator?.usualMachineId) return ''
+      const usual = this.findMachine(operator.usualMachineId)
+      const pair = this.loaderPairs.find((item) => item.operatorId === operatorId)
+      if (!pair) return `Usual ${usual.name}`
+      if (pair.machineId === operator.usualMachineId) return ''
+      return `Usual ${usual.name}`
     },
 
     assignmentLabel(assignment) {
@@ -357,6 +358,10 @@ export function createDemoStore() {
       if (!drag) return
       if (kind === 'machine' && drag.type === 'operator') this.pairOperatorWithMachine(drag.id, id)
       if (kind === 'operator' && drag.type === 'machine') this.pairOperatorWithMachine(id, drag.id)
+      if (kind === 'operator' && drag.type === 'operator' && drag.id !== id) {
+        const machine = this.loaderPairs.find((item) => item.operatorId === id)
+        if (machine) this.pairOperatorWithMachine(drag.id, machine.machineId)
+      }
       if (kind !== 'site') return
       const machineId = drag.type === 'machine'
         ? drag.id

@@ -136,9 +136,8 @@ textarea { min-height: 84px; resize: vertical; }
   gap: 12px;
   align-items: start;
 }
-.pair-col-sites { grid-column: 1 / -1; }
 .pair-col .stack { gap: 6px; }
-.site-board { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.site-board { display: flex; flex-direction: column; gap: 6px; }
 .board-label {
   font-size: 0.72rem;
   font-weight: 700;
@@ -147,23 +146,40 @@ textarea { min-height: 84px; resize: vertical; }
   color: var(--muted);
   margin-bottom: 4px;
 }
-.drag-card, .site-drop {
+.equip-card, .site-drop {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 6px 8px;
   min-height: 44px;
 }
-.drag-card {
+.equip-card, .operator-card {
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
-.drag-card.is-assigned { opacity: 0.48; }
-.drag-card.is-target, .site-drop.is-target {
+.equip-card.is-assigned { opacity: 0.55; }
+.equip-card.is-target, .operator-card.is-target, .site-drop.is-target {
   outline: 2px dashed var(--spruce);
   outline-offset: 2px;
   opacity: 1;
+}
+.operator-card {
+  margin-top: 6px;
+  background: #f3f7f4;
+  border: 1px solid #d5e0d8;
+  border-radius: 8px;
+  padding: 5px 8px;
+  min-height: 36px;
+}
+.operator-card.is-loose { margin-top: 0; background: white; }
+.operator-slot {
+  margin-top: 6px;
+  border: 1px dashed #c5d2c9;
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 .drag-title, .site-drop h3 {
   font-family: "Barlow Condensed", sans-serif;
@@ -483,18 +499,10 @@ textarea { min-height: 84px; resize: vertical; }
   .section-loaders { padding: 10px; }
   .section-loaders .section-h { margin-bottom: 8px; }
   .section-loaders .section-h h2 { font-size: 1.35rem; }
-  .section-loaders .section-h p { display: none; }
-  .pair-board {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-  .pair-col-operators { order: 1; }
-  .pair-col-machines { order: 2; }
-  .pair-col-sites { order: 3; grid-column: auto; }
-  .site-board { grid-template-columns: 1fr; gap: 4px; }
-  .pair-col .stack { gap: 4px; }
+  .pair-board { gap: 8px; }
+  .pair-col .stack, .site-board { gap: 4px; }
   .board-label { font-size: 0.62rem; letter-spacing: 0.04em; margin-bottom: 3px; }
-  .drag-card, .site-drop { padding: 5px 6px; }
+  .equip-card, .operator-card, .site-drop { padding: 5px 6px; }
   .drag-title, .site-drop h3 { font-size: 0.84rem; }
   .drag-sub, .pair-pill { font-size: 0.68rem; }
   .pair-pill { flex-wrap: nowrap; margin-top: 3px; padding: 0 2px 0 4px; }

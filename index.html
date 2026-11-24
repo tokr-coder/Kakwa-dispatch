@@ -11,8 +11,8 @@
       rel="stylesheet"
     />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%231e4d3a' width='32' height='32' rx='6'/%3E%3Cpath fill='%23f6c445' d='M8 20h16l-2 4H10zm2-3h12l-1.2-6H11.2z'/%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="./assets/index-Exbyrjtx.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Bkq3Upvu.css">
+    <script type="module" crossorigin src="./assets/index-BEHY1A3D.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B6qFSr4g.css">
   </head>
   <body x-data x-cloak>
     <div class="app" x-effect="$store.demo.refreshDriverJobs()">
@@ -40,16 +40,16 @@
               <div>
                 <p class="eyebrow">01</p>
                 <h2 id="loaders-heading">Loaders</h2>
-                <p>Operators start on the machine they usually run. Drag an operator onto a machine, or a machine onto an operator, to change the pair. Then drag the pair onto a site.</p>
+                <p>Operators start on the machine they usually run. Drag an operator into a machine to change the pair, then drag that machine onto a site.</p>
               </div>
             </div>
             <div class="pair-board">
-              <div class="pair-col pair-col-machines">
-                <p class="board-label">Machines</p>
+              <div class="pair-col">
+                <p class="board-label">Equipment</p>
                 <div class="stack">
                   <template x-for="pair in $store.demo.loaderPairs" :key="pair.machineId">
                     <article
-                      class="drag-card"
+                      class="equip-card"
                       :class="{
                         'is-assigned': $store.demo.machineAssigned(pair.machineId),
                         'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'machine' && $store.demo.dropHint.id === pair.machineId
@@ -58,33 +58,39 @@
                       :data-id="pair.machineId"
                       @pointerdown="$store.demo.beginPointerDrag($event, 'machine', pair.machineId)"
                     >
-                      <p class="drag-title" x-text="$store.demo.findMachine(pair.machineId).name"></p>
-                      <p class="drag-sub" x-text="$store.demo.machineCardLine(pair)"></p>
+                      <p class="drag-title">
+                        <span x-text="$store.demo.findMachine(pair.machineId).name"></span><span class="drag-sub" x-show="$store.demo.siteNameForMachine(pair.machineId)" x-text="' · ' + $store.demo.siteNameForMachine(pair.machineId)"></span>
+                      </p>
+                      <p class="drag-sub" x-text="$store.demo.implementName(pair.implementId)"></p>
+                      <article
+                        class="operator-card"
+                        x-show="pair.operatorId"
+                        :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === pair.operatorId }"
+                        data-drop="operator"
+                        :data-id="pair.operatorId"
+                        @pointerdown.stop="$store.demo.beginPointerDrag($event, 'operator', pair.operatorId)"
+                      >
+                        <p class="drag-title" x-text="$store.demo.operatorName(pair.operatorId)"></p>
+                        <p class="drag-sub" x-show="$store.demo.operatorSeatText(pair.operatorId)" x-text="$store.demo.operatorSeatText(pair.operatorId)"></p>
+                      </article>
+                      <p class="operator-slot" x-show="!pair.operatorId">Drop an operator</p>
                     </article>
                   </template>
-                </div>
-              </div>
-              <div class="pair-col pair-col-operators">
-                <p class="board-label">Operators</p>
-                <div class="stack">
-                  <template x-for="operator in $store.demo.operatorsForRole('loader')" :key="operator.id">
+                  <template x-for="operator in $store.demo.freeLoaderOperators()" :key="operator.id">
                     <article
-                      class="drag-card"
-                      :class="{
-                        'is-assigned': $store.demo.operatorAssigned(operator.id),
-                        'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === operator.id
-                      }"
+                      class="operator-card is-loose"
+                      :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === operator.id }"
                       data-drop="operator"
                       :data-id="operator.id"
                       @pointerdown="$store.demo.beginPointerDrag($event, 'operator', operator.id)"
                     >
                       <p class="drag-title" x-text="operator.name"></p>
-                      <p class="drag-sub" x-text="$store.demo.operatorPairText(operator)"></p>
+                      <p class="drag-sub" x-text="$store.demo.operatorSeatText(operator.id)"></p>
                     </article>
                   </template>
                 </div>
               </div>
-              <div class="pair-col pair-col-sites">
+              <div class="pair-col">
                 <p class="board-label">Sites</p>
                 <div class="site-board">
                   <template x-for="site in $store.demo.sites" :key="site.id">
