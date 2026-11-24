@@ -238,8 +238,11 @@ textarea { min-height: 84px; resize: vertical; }
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
-.tag-brass { background: var(--brass-soft); color: var(--brass); }
-.tag-pine { background: #e5f3ec; color: var(--spruce); }
+.tag-brass, .tag-sanding { background: var(--brass-soft); color: var(--brass); }
+.tag-pine, .tag-clearing { background: #e5f3ec; color: var(--spruce); }
+.tag-hauling { background: #e7eef6; color: #1d4e89; }
+.service-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.equip-card .tag, .service-tags .tag { min-height: 20px; margin-top: 4px; font-size: 0.68rem; }
 .warn {
   margin-top: 8px;
   color: var(--warn);
@@ -496,9 +499,9 @@ textarea { min-height: 84px; resize: vertical; }
   .fields-4, .fields-3, .fields-2, .log li, .route li, .haul-row {
     grid-template-columns: 1fr;
   }
-  .section-loaders { padding: 10px; }
-  .section-loaders .section-h { margin-bottom: 8px; }
-  .section-loaders .section-h h2 { font-size: 1.35rem; }
+  .section-dispatch { padding: 10px; }
+  .section-dispatch .section-h { margin-bottom: 8px; }
+  .section-dispatch .section-h h2 { font-size: 1.35rem; }
   .pair-board { gap: 8px; }
   .pair-col .stack, .site-board { gap: 4px; }
   .board-label { font-size: 0.62rem; letter-spacing: 0.04em; margin-bottom: 3px; }

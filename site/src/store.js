@@ -31,15 +31,10 @@ function formatDuration(startIso, endIso) {
 
 export function createDemoStore() {
   const data = structuredClone(seed)
-  const jobIds = [
-    ...data.loaderAssignments.map((item) => item.id),
-    ...data.sanding.stops.map((item) => item.id),
-    ...data.haulQueue.map((item) => item.id),
-  ]
+  const jobIds = data.assignments.map((item) => item.id)
 
   return {
     pane: 'office',
-    role: 'loader',
     operatorId: 'op-mara',
     selectedJobId: null,
     notice: '',
@@ -50,8 +45,7 @@ export function createDemoStore() {
     draftEndHours: '',
     draftMachineId: 'ld-12',
     draftImplementId: 'imp-pusher',
-    draftPup: true,
-    onDemandSiteId: 'site-cedar',
+    draftPup: false,
     clock: '',
     driverJobs: [],
     blankJob: { id: '_none', kind: '', siteId: 'site-northgate', title: '', position: null },
@@ -59,14 +53,10 @@ export function createDemoStore() {
     dropHint: null,
     sites: data.sites,
     operators: data.operators,
-    loaders: data.loaders,
+    machines: data.machines,
     implements: data.implements,
-    sanders: data.sanders,
-    haulTrucks: data.haulTrucks,
-    loaderPairs: data.loaderPairs,
-    loaderAssignments: data.loaderAssignments,
-    sanding: data.sanding,
-    haulQueue: data.haulQueue,
+    pairs: data.pairs,
+    assignments: data.assignments,
     shifts: Object.fromEntries(data.operators.map((operator) => [operator.id, null])),
     visits: Object.fromEntries([...jobIds, '_none'].map((id) => [id, emptyVisit()])),
 
@@ -94,22 +84,23 @@ export function createDemoStore() {
       return this.operators.find((item) => item.id === id)?.name ?? ''
     },
 
-    operatorsForRole(role = this.role) {
-      return this.operators.filter((item) => item.role === role)
-    },
-
     findMachine(id) {
-      return [...this.loaders, ...this.sanders, ...this.haulTrucks].find((item) => item.id === id) ?? null
+      return this.machines.find((item) => item.id === id) ?? null
     },
 
     implementName(id) {
       return this.implements.find((item) => item.id === id)?.name ?? ''
     },
 
+    serviceLabel(service) {
+      if (!service) return ''
+      return service.charAt(0).toUpperCase() + service.slice(1)
+    },
+
     roleLabel() {
-      if (this.role === 'sanding') return 'Sanding driver'
-      if (this.role === 'haul') return 'Haul driver'
-      return 'Loader operator'
+      const pair = this.pairs.find((item) => item.operatorId === this.operatorId)
+      const machine = pair ? this.findMachine(pair.machineId) : this.selectedMachine()
+      return this.serviceLabel(machine?.service) || 'Operator'
     },
 
     activeShift() {
@@ -126,52 +117,24 @@ export function createDemoStore() {
       return this.visits[id]
     },
 
-    machinesForRole() {
-      if (this.role === 'sanding') return this.sanders
-      if (this.role === 'haul') return this.haulTrucks
-      return this.loaders
-    },
-
     selectedMachine() {
       return this.findMachine(this.draftMachineId)
     },
 
-    truckHasPup(id) {
-      return Boolean(this.haulTrucks.find((item) => item.id === id)?.hasPup)
-    },
-
     syncPupDefault() {
-      this.draftPup = this.truckHasPup(this.draftMachineId)
+      this.draftPup = Boolean(this.selectedMachine()?.hasPup)
+      this.draftImplementId = this.selectedMachine()?.implementId ?? ''
     },
 
     applyDraftFromAssignment() {
-      if (this.role === 'loader') {
-        const assignment = this.loaderAssignments.find((item) => item.operatorId === this.operatorId)
-        const pair = this.loaderPairs.find((item) => item.operatorId === this.operatorId)
-        this.draftMachineId = assignment?.machineId ?? pair?.machineId ?? this.loaders[0].id
-        this.draftImplementId = assignment?.implementId ?? pair?.implementId ?? this.implements[0].id
-      } else if (this.role === 'sanding') {
-        this.draftMachineId = this.sanding.operatorId === this.operatorId
-          ? this.sanding.truckId
-          : this.sanders[0].id
-      } else {
-        const stop = this.haulQueue.find((item) => item.operatorId === this.operatorId)
-        this.draftMachineId = stop?.truckId ?? this.haulTrucks[0].id
-        this.draftPup = this.truckHasPup(this.draftMachineId)
-      }
+      const assignment = this.assignments.find((item) => item.operatorId === this.operatorId)
+      const pair = this.pairs.find((item) => item.operatorId === this.operatorId)
+      this.draftMachineId = assignment?.machineId ?? pair?.machineId ?? this.machines[0].id
+      const machine = this.findMachine(this.draftMachineId)
+      this.draftImplementId = machine?.implementId ?? ''
+      this.draftPup = Boolean(machine?.hasPup)
       this.draftStartHours = ''
       this.draftEndHours = ''
-    },
-
-    setRole(role) {
-      this.role = role
-      this.operatorId = this.operatorsForRole(role)[0].id
-      this.selectedJobId = null
-      this.hourError = ''
-      this.endError = ''
-      this.showEndShift = false
-      this.notice = ''
-      if (!this.shifts[this.operatorId]) this.applyDraftFromAssignment()
     },
 
     onOperatorChange() {
@@ -184,32 +147,38 @@ export function createDemoStore() {
     },
 
     assignmentsForSite(siteId) {
-      return this.loaderAssignments.filter((item) => item.siteId === siteId)
+      return this.assignments.filter((item) => item.siteId === siteId)
     },
 
     machineAssigned(machineId) {
-      return this.loaderAssignments.some((item) => item.machineId === machineId)
+      return this.assignments.some((item) => item.machineId === machineId)
     },
 
     operatorAssigned(operatorId) {
-      return this.loaderAssignments.some((item) => item.operatorId === operatorId)
+      return this.assignments.some((item) => item.operatorId === operatorId)
     },
 
     siteNameForMachine(machineId) {
-      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
+      const assignment = this.assignments.find((item) => item.machineId === machineId)
       return assignment ? this.site(assignment.siteId).name : ''
     },
 
-    freeLoaderOperators() {
-      const taken = new Set(this.loaderPairs.map((item) => item.operatorId).filter(Boolean))
-      return this.operatorsForRole('loader').filter((operator) => !taken.has(operator.id))
+    freeOperators() {
+      const taken = new Set(this.pairs.map((item) => item.operatorId).filter(Boolean))
+      return this.operators.filter((operator) => !taken.has(operator.id))
+    },
+
+    machineDetail(machine) {
+      if (machine.implementId) return this.implementName(machine.implementId)
+      if (machine.hasPup) return 'Pup attached'
+      return ''
     },
 
     operatorSeatText(operatorId) {
       const operator = this.operators.find((item) => item.id === operatorId)
       if (!operator?.usualMachineId) return ''
       const usual = this.findMachine(operator.usualMachineId)
-      const pair = this.loaderPairs.find((item) => item.operatorId === operatorId)
+      const pair = this.pairs.find((item) => item.operatorId === operatorId)
       if (!pair) return `Usual ${usual.name}`
       if (pair.machineId === operator.usualMachineId) return ''
       return `Usual ${usual.name}`
@@ -221,59 +190,54 @@ export function createDemoStore() {
     },
 
     clearAssignmentForMachine(machineId) {
-      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
+      const assignment = this.assignments.find((item) => item.machineId === machineId)
       if (!assignment) return
-      this.loaderAssignments = this.loaderAssignments.filter((item) => item.id !== assignment.id)
+      this.assignments = this.assignments.filter((item) => item.id !== assignment.id)
       if (this.selectedJobId === assignment.id) this.selectedJobId = null
     },
 
     refreshLoaderDraft(operatorId) {
-      if (this.role !== 'loader' || this.operatorId !== operatorId || this.shifts[operatorId]) return
+      if (this.operatorId !== operatorId || this.shifts[operatorId]) return
       this.applyDraftFromAssignment()
     },
 
     pairOperatorWithMachine(operatorId, machineId) {
-      const machine = this.loaderPairs.find((item) => item.machineId === machineId)
+      const machine = this.pairs.find((item) => item.machineId === machineId)
       if (!machine || machine.operatorId === operatorId) return
       const displaced = machine.operatorId
-      const previous = this.loaderPairs.find((item) => item.operatorId === operatorId)
+      const previous = this.pairs.find((item) => item.operatorId === operatorId)
       if (previous && previous.machineId !== machineId) {
         previous.operatorId = null
         this.clearAssignmentForMachine(previous.machineId)
       }
       machine.operatorId = operatorId
-      const assignment = this.loaderAssignments.find((item) => item.machineId === machineId)
-      if (assignment) {
-        assignment.operatorId = operatorId
-        assignment.implementId = machine.implementId
-      }
+      const assignment = this.assignments.find((item) => item.machineId === machineId)
+      if (assignment) assignment.operatorId = operatorId
       this.refreshLoaderDraft(operatorId)
       if (displaced) this.refreshLoaderDraft(displaced)
     },
 
     assignPairToSite(machineId, siteId) {
-      const pair = this.loaderPairs.find((item) => item.machineId === machineId)
+      const pair = this.pairs.find((item) => item.machineId === machineId)
       if (!pair?.operatorId || !this.site(siteId)) return
-      const existing = this.loaderAssignments.find((item) => item.machineId === machineId)
+      const existing = this.assignments.find((item) => item.machineId === machineId)
       if (existing) {
         existing.siteId = siteId
         existing.operatorId = pair.operatorId
-        existing.implementId = pair.implementId
         return
       }
       const id = `asg-${Math.random().toString(36).slice(2, 8)}`
-      this.loaderAssignments.push({
+      this.assignments.push({
         id,
         siteId,
         operatorId: pair.operatorId,
         machineId,
-        implementId: pair.implementId,
       })
       this.ensureVisit(id)
     },
 
     unassignMachine(machineId) {
-      const operatorId = this.loaderAssignments.find((item) => item.machineId === machineId)?.operatorId
+      const operatorId = this.assignments.find((item) => item.machineId === machineId)?.operatorId
       this.clearAssignmentForMachine(machineId)
       if (operatorId) this.refreshLoaderDraft(operatorId)
     },
@@ -281,7 +245,7 @@ export function createDemoStore() {
     dragLabel() {
       if (!this.drag) return ''
       if (this.drag.type === 'operator') return this.operatorName(this.drag.id)
-      const pair = this.loaderPairs.find((item) => item.machineId === this.drag.id)
+      const pair = this.pairs.find((item) => item.machineId === this.drag.id)
       if (!pair) return ''
       const who = pair.operatorId ? this.operatorName(pair.operatorId) : 'Open machine'
       return `${this.findMachine(pair.machineId).name} · ${who}`
@@ -359,108 +323,40 @@ export function createDemoStore() {
       if (kind === 'machine' && drag.type === 'operator') this.pairOperatorWithMachine(drag.id, id)
       if (kind === 'operator' && drag.type === 'machine') this.pairOperatorWithMachine(id, drag.id)
       if (kind === 'operator' && drag.type === 'operator' && drag.id !== id) {
-        const machine = this.loaderPairs.find((item) => item.operatorId === id)
+        const machine = this.pairs.find((item) => item.operatorId === id)
         if (machine) this.pairOperatorWithMachine(drag.id, machine.machineId)
       }
       if (kind !== 'site') return
       const machineId = drag.type === 'machine'
         ? drag.id
-        : this.loaderPairs.find((item) => item.operatorId === drag.id)?.machineId
+        : this.pairs.find((item) => item.operatorId === drag.id)?.machineId
       if (machineId) this.assignPairToSite(machineId, id)
     },
 
-    openSandSites() {
-      const taken = new Set(this.sanding.stops.map((stop) => stop.siteId))
-      return this.sites.filter((site) => !taken.has(site.id))
-    },
-
-    syncOnDemandPick() {
-      const open = this.openSandSites()
-      if (!open.some((site) => site.id === this.onDemandSiteId)) {
-        this.onDemandSiteId = open[0]?.id ?? ''
+    jobFromAssignment(item) {
+      const machine = this.findMachine(item.machineId)
+      const detail = this.machineDetail(machine)
+      return {
+        id: item.id,
+        kind: machine.service,
+        siteId: item.siteId,
+        operatorId: item.operatorId,
+        machineId: item.machineId,
+        implementId: machine.implementId || null,
+        title: this.site(item.siteId).name,
+        meta: detail ? `${machine.name} · ${detail}` : machine.name,
       }
-    },
-
-    addOnDemand() {
-      this.syncOnDemandPick()
-      if (!this.onDemandSiteId) return
-      const id = `sand-${Math.random().toString(36).slice(2, 8)}`
-      this.sanding.stops.push({ id, siteId: this.onDemandSiteId, source: 'ondemand' })
-      this.ensureVisit(id)
-      this.syncOnDemandPick()
-    },
-
-    removeStop(id) {
-      this.sanding.stops = this.sanding.stops.filter((stop) => stop.id !== id)
-      if (this.selectedJobId === id) this.selectedJobId = null
-      this.syncOnDemandPick()
-    },
-
-    moveHaul(index, direction) {
-      const next = index + direction
-      if (next < 0 || next >= this.haulQueue.length) return
-      const [row] = this.haulQueue.splice(index, 1)
-      this.haulQueue.splice(next, 0, row)
     },
 
     refreshDriverJobs() {
-      this.syncOnDemandPick()
-      const operatorId = this.operatorId
-      let jobs = []
-
-      if (this.role === 'loader') {
-        jobs = this.loaderAssignments
-          .filter((item) => item.operatorId === operatorId)
-          .map((item) => ({
-            id: item.id,
-            kind: 'loader',
-            siteId: item.siteId,
-            operatorId: item.operatorId,
-            machineId: item.machineId,
-            implementId: item.implementId,
-            title: this.site(item.siteId).name,
-            meta: `${this.findMachine(item.machineId).name} · ${this.implementName(item.implementId)}`,
-          }))
-      } else if (this.role === 'sanding' && this.sanding.operatorId === operatorId) {
-        const total = this.sanding.stops.length
-        jobs = this.sanding.stops.map((stop, index) => ({
-          id: stop.id,
-          kind: 'sanding',
-          siteId: stop.siteId,
-          operatorId,
-          machineId: this.sanding.truckId,
-          title: this.site(stop.siteId).name,
-          meta: `Stop ${index + 1} of ${total} · ${this.findMachine(this.sanding.truckId).name}`,
-          position: index + 1,
-        }))
-      } else if (this.role === 'haul') {
-        jobs = this.haulQueue
-          .map((item, index) => ({ item, index }))
-          .filter(({ item }) => item.operatorId === operatorId)
-          .map(({ item, index }) => ({
-            id: item.id,
-            kind: 'haul',
-            siteId: item.siteId,
-            operatorId: item.operatorId,
-            machineId: item.truckId,
-            title: this.site(item.siteId).name,
-            meta: this.haulMachineLabel(item.truckId, operatorId),
-            position: index + 1,
-          }))
-      }
-
+      const jobs = this.assignments
+        .filter((item) => item.operatorId === this.operatorId)
+        .map((item) => this.jobFromAssignment(item))
       jobs.forEach((job) => this.ensureVisit(job.id))
       this.driverJobs = jobs
       if (this.selectedJobId && !jobs.some((job) => job.id === this.selectedJobId)) {
         this.selectedJobId = null
       }
-    },
-
-    haulMachineLabel(truckId, operatorId) {
-      const truck = this.findMachine(truckId)
-      const shift = this.shifts[operatorId]
-      const pup = shift && shift.machineId === truckId ? shift.pup : truck.hasPup
-      return pup ? `${truck.name} + pup` : truck.name
     },
 
     selectedJob() {
@@ -472,30 +368,7 @@ export function createDemoStore() {
     },
 
     allJobs() {
-      return [
-        ...this.loaderAssignments.map((item) => ({
-          id: item.id,
-          kind: 'loader',
-          siteId: item.siteId,
-          operatorId: item.operatorId,
-          machineId: item.machineId,
-          implementId: item.implementId,
-        })),
-        ...this.sanding.stops.map((stop) => ({
-          id: stop.id,
-          kind: 'sanding',
-          siteId: stop.siteId,
-          operatorId: this.sanding.operatorId,
-          machineId: this.sanding.truckId,
-        })),
-        ...this.haulQueue.map((item) => ({
-          id: item.id,
-          kind: 'haul',
-          siteId: item.siteId,
-          operatorId: item.operatorId,
-          machineId: item.truckId,
-        })),
-      ]
+      return this.assignments.map((item) => this.jobFromAssignment(item))
     },
 
     statusLabel(id) {
@@ -523,8 +396,8 @@ export function createDemoStore() {
       }
       this.shifts[this.operatorId] = {
         machineId: machine.id,
-        implementId: this.role === 'loader' ? this.draftImplementId : null,
-        pup: this.role === 'haul' && machine.hasPup ? this.draftPup : false,
+        implementId: machine.implementId || null,
+        pup: machine.hasPup ? this.draftPup : false,
         startHours: reading,
         endHours: null,
       }
@@ -569,16 +442,7 @@ export function createDemoStore() {
     composeSms(job, clockIn) {
       const site = this.site(job.siteId)
       const time = formatTime(clockIn).replace(/\.$/, '')
-      const windowText = '45–75 min'
-      let place = 'Loader is on site.'
-      if (job.kind === 'haul') {
-        const position = this.haulQueue.findIndex((item) => item.id === job.id) + 1
-        place = `You are #${position} in the haul queue.`
-      } else if (job.kind === 'sanding') {
-        const position = this.sanding.stops.findIndex((item) => item.id === job.id) + 1
-        place = `You are stop ${position} of ${this.sanding.stops.length} on the sanding route.`
-      }
-      return `Kakwa: Arrived at ${site.name} at ${time}. ${place} Estimated window ${windowText}.`
+      return `Kakwa: Arrived at ${site.name} at ${time}. Estimated window 45–75 min.`
     },
 
     clockIn(job) {
@@ -630,16 +494,14 @@ export function createDemoStore() {
       return `${formatDuration(visit.clockIn, visit.clockOut)} on site`
     },
 
-    positionText(job) {
-      if (!job?.position) return ''
-      if (job.kind === 'sanding') return `Stop ${job.position} of ${this.sanding.stops.length}`
-      return `Priority #${job.position}`
+    positionText() {
+      return ''
     },
 
     detailFor(job, visit) {
       let base = ''
       if (job.kind === 'sanding') base = `${Number(visit.iceRock).toFixed(1)} yd ice rock`
-      if (job.kind === 'haul') {
+      if (job.kind === 'hauling') {
         const notes = visit.notes.trim() ? ` · ${visit.notes.trim()}` : ''
         const noun = visit.loads === 1 ? 'load' : 'loads'
         base = `${visit.loads} ${noun}${notes}`
@@ -658,11 +520,9 @@ export function createDemoStore() {
         const implement = shift.implementId ? ` · ${this.implementName(shift.implementId)}` : ''
         return `${machine.name}${pup}${implement}`
       }
-      if (job.kind === 'loader') {
-        return `${this.findMachine(job.machineId).name} · ${this.implementName(job.implementId)}`
-      }
-      if (job.kind === 'haul') return this.haulMachineLabel(job.machineId, job.operatorId)
-      return this.findMachine(job.machineId).name
+      const machine = this.findMachine(job.machineId)
+      const detail = this.machineDetail(machine)
+      return detail ? `${machine.name} · ${detail}` : machine.name
     },
 
     readout() {

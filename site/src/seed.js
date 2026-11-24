@@ -5,6 +5,7 @@ export const seed = {
       name: 'Northgate Plaza',
       address: '10420 99 Ave',
       large: true,
+      services: ['clearing', 'hauling'],
       hazards: ['Overhead powerlines along the south lot line'],
     },
     {
@@ -12,6 +13,7 @@ export const seed = {
       name: 'Pinnacle Industrial',
       address: '8201 116 St',
       large: true,
+      services: ['clearing', 'hauling'],
       hazards: ['Soft ground on the east approach', 'Hidden curb at dock 3'],
     },
     {
@@ -19,6 +21,7 @@ export const seed = {
       name: 'Riverstone Apartments',
       address: '9805 100 St',
       large: false,
+      services: ['clearing'],
       hazards: ['Icy grade on the parkade ramp'],
     },
     {
@@ -26,6 +29,7 @@ export const seed = {
       name: 'Creekview Medical',
       address: '11203 100 St',
       large: false,
+      services: ['sanding'],
       hazards: ['Overhead powerlines at the entrance canopy'],
     },
     {
@@ -33,6 +37,7 @@ export const seed = {
       name: 'Horizon School',
       address: '7302 97 Ave',
       large: false,
+      services: ['clearing', 'sanding'],
       hazards: ['Hidden curb at the bus loop'],
     },
     {
@@ -40,6 +45,7 @@ export const seed = {
       name: 'Westwind Retail',
       address: '12202 100 St',
       large: false,
+      services: ['sanding'],
       hazards: ['Icy grade in the drive-through lane'],
     },
     {
@@ -47,6 +53,7 @@ export const seed = {
       name: 'Lakeland Warehouse',
       address: '15501 97 St',
       large: false,
+      services: ['hauling'],
       hazards: ['Soft ground in the overflow lot'],
     },
     {
@@ -54,76 +61,48 @@ export const seed = {
       name: 'Cedar Court Clinic',
       address: '10112 105 Ave',
       large: false,
+      services: ['sanding', 'clearing'],
       hazards: ['Overhead powerlines on the alley side'],
     },
   ],
   operators: [
-    { id: 'op-mara', name: 'Mara Ellison', role: 'loader', usualMachineId: 'ld-12', usualImplementId: 'imp-pusher' },
-    { id: 'op-chris', name: 'Chris Adeyemi', role: 'loader', usualMachineId: 'ld-07', usualImplementId: 'imp-plow' },
-    { id: 'op-jonah', name: 'Jonah Park', role: 'loader', usualMachineId: 'ld-19', usualImplementId: 'imp-blower' },
-    { id: 'op-priya', name: 'Priya Shah', role: 'sanding' },
-    { id: 'op-drew', name: 'Drew Lang', role: 'sanding' },
-    { id: 'op-evan', name: 'Evan Brooks', role: 'haul' },
-    { id: 'op-sam', name: 'Sam Ortega', role: 'haul' },
+    { id: 'op-mara', name: 'Mara Ellison', usualMachineId: 'ld-12' },
+    { id: 'op-chris', name: 'Chris Adeyemi', usualMachineId: 'ld-07' },
+    { id: 'op-jonah', name: 'Jonah Park', usualMachineId: 'ld-19' },
+    { id: 'op-priya', name: 'Priya Shah', usualMachineId: 'st-3' },
+    { id: 'op-drew', name: 'Drew Lang', usualMachineId: 'st-6' },
+    { id: 'op-evan', name: 'Evan Brooks', usualMachineId: 'ht-2' },
+    { id: 'op-sam', name: 'Sam Ortega', usualMachineId: 'ht-5' },
   ],
-  loaders: [
-    { id: 'ld-12', name: 'LD-12', lastHours: 4820.4 },
-    { id: 'ld-07', name: 'LD-07', lastHours: 3102.1 },
-    { id: 'ld-19', name: 'LD-19', lastHours: 5560.8 },
+  machines: [
+    { id: 'ld-12', name: 'LD-12', lastHours: 4820.4, service: 'clearing', implementId: 'imp-pusher' },
+    { id: 'ld-07', name: 'LD-07', lastHours: 3102.1, service: 'clearing', implementId: 'imp-plow' },
+    { id: 'ld-19', name: 'LD-19', lastHours: 5560.8, service: 'clearing', implementId: 'imp-blower' },
+    { id: 'st-3', name: 'ST-3', lastHours: 2210.0, service: 'sanding' },
+    { id: 'st-6', name: 'ST-6', lastHours: 1874.5, service: 'sanding' },
+    { id: 'ht-2', name: 'HT-2', lastHours: 6402.2, service: 'hauling', hasPup: true },
+    { id: 'ht-5', name: 'HT-5', lastHours: 5108.6, service: 'hauling', hasPup: false },
   ],
   implements: [
     { id: 'imp-pusher', name: '14 ft pusher' },
     { id: 'imp-plow', name: '12 ft angle plow' },
     { id: 'imp-blower', name: 'Snow blower' },
   ],
-  sanders: [
-    { id: 'st-3', name: 'ST-3', lastHours: 2210.0 },
-    { id: 'st-6', name: 'ST-6', lastHours: 1874.5 },
+  pairs: [
+    { machineId: 'ld-12', operatorId: 'op-mara' },
+    { machineId: 'ld-07', operatorId: 'op-chris' },
+    { machineId: 'ld-19', operatorId: 'op-jonah' },
+    { machineId: 'st-3', operatorId: 'op-priya' },
+    { machineId: 'st-6', operatorId: 'op-drew' },
+    { machineId: 'ht-2', operatorId: 'op-evan' },
+    { machineId: 'ht-5', operatorId: 'op-sam' },
   ],
-  haulTrucks: [
-    { id: 'ht-2', name: 'HT-2', lastHours: 6402.2, hasPup: true },
-    { id: 'ht-5', name: 'HT-5', lastHours: 5108.6, hasPup: false },
-  ],
-  loaderPairs: [
-    { machineId: 'ld-12', implementId: 'imp-pusher', operatorId: 'op-mara' },
-    { machineId: 'ld-07', implementId: 'imp-plow', operatorId: 'op-chris' },
-    { machineId: 'ld-19', implementId: 'imp-blower', operatorId: 'op-jonah' },
-  ],
-  loaderAssignments: [
-    {
-      id: 'asg-mara',
-      siteId: 'site-northgate',
-      operatorId: 'op-mara',
-      machineId: 'ld-12',
-      implementId: 'imp-pusher',
-    },
-    {
-      id: 'asg-chris',
-      siteId: 'site-northgate',
-      operatorId: 'op-chris',
-      machineId: 'ld-07',
-      implementId: 'imp-plow',
-    },
-    {
-      id: 'asg-jonah',
-      siteId: 'site-pinnacle',
-      operatorId: 'op-jonah',
-      machineId: 'ld-19',
-      implementId: 'imp-blower',
-    },
-  ],
-  sanding: {
-    operatorId: 'op-priya',
-    truckId: 'st-3',
-    stops: [
-      { id: 'sand-creek', siteId: 'site-creekview', source: 'auto' },
-      { id: 'sand-horizon', siteId: 'site-horizon', source: 'auto' },
-      { id: 'sand-west', siteId: 'site-westwind', source: 'auto' },
-    ],
-  },
-  haulQueue: [
-    { id: 'haul-pinnacle', siteId: 'site-pinnacle', operatorId: 'op-evan', truckId: 'ht-2' },
-    { id: 'haul-northgate', siteId: 'site-northgate', operatorId: 'op-evan', truckId: 'ht-2' },
-    { id: 'haul-lakeland', siteId: 'site-lakeland', operatorId: 'op-sam', truckId: 'ht-5' },
+  assignments: [
+    { id: 'asg-mara', siteId: 'site-northgate', operatorId: 'op-mara', machineId: 'ld-12' },
+    { id: 'asg-chris', siteId: 'site-northgate', operatorId: 'op-chris', machineId: 'ld-07' },
+    { id: 'asg-jonah', siteId: 'site-pinnacle', operatorId: 'op-jonah', machineId: 'ld-19' },
+    { id: 'asg-priya', siteId: 'site-creekview', operatorId: 'op-priya', machineId: 'st-3' },
+    { id: 'asg-evan', siteId: 'site-northgate', operatorId: 'op-evan', machineId: 'ht-2' },
+    { id: 'asg-sam', siteId: 'site-lakeland', operatorId: 'op-sam', machineId: 'ht-5' },
   ],
 }

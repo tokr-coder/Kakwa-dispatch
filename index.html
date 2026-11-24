@@ -11,8 +11,8 @@
       rel="stylesheet"
     />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%231e4d3a' width='32' height='32' rx='6'/%3E%3Cpath fill='%23f6c445' d='M8 20h16l-2 4H10zm2-3h12l-1.2-6H11.2z'/%3E%3C/svg%3E" />
-    <script type="module" crossorigin src="./assets/index-BEHY1A3D.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-B6qFSr4g.css">
+    <script type="module" crossorigin src="./assets/index-CfMOUOEF.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-PKso5SzE.css">
   </head>
   <body x-data x-cloak>
     <div class="app" x-effect="$store.demo.refreshDriverJobs()">
@@ -35,19 +35,18 @@
 
       <div class="workspace" :data-pane="$store.demo.pane">
         <main class="office" id="dispatch">
-          <section class="section section-loaders" aria-labelledby="loaders-heading">
+          <section class="section section-dispatch" aria-labelledby="dispatch-heading">
             <div class="section-h">
               <div>
-                <p class="eyebrow">01</p>
-                <h2 id="loaders-heading">Loaders</h2>
-                <p>Operators start on the machine they usually run. Drag an operator into a machine to change the pair, then drag that machine onto a site.</p>
+                <h2 id="dispatch-heading">Dispatch</h2>
+                <p>Drag an operator into a machine, then drag the machine onto a site. Tags on a site are the services that lot needs.</p>
               </div>
             </div>
             <div class="pair-board">
               <div class="pair-col">
-                <p class="board-label">Equipment</p>
+                <p class="board-label">Machines</p>
                 <div class="stack">
-                  <template x-for="pair in $store.demo.loaderPairs" :key="pair.machineId">
+                  <template x-for="pair in $store.demo.pairs" :key="pair.machineId">
                     <article
                       class="equip-card"
                       :class="{
@@ -61,7 +60,8 @@
                       <p class="drag-title">
                         <span x-text="$store.demo.findMachine(pair.machineId).name"></span><span class="drag-sub" x-show="$store.demo.siteNameForMachine(pair.machineId)" x-text="' · ' + $store.demo.siteNameForMachine(pair.machineId)"></span>
                       </p>
-                      <p class="drag-sub" x-text="$store.demo.implementName(pair.implementId)"></p>
+                      <p class="drag-sub" x-show="$store.demo.machineDetail($store.demo.findMachine(pair.machineId))" x-text="$store.demo.machineDetail($store.demo.findMachine(pair.machineId))"></p>
+                      <span class="tag" :class="'tag-' + $store.demo.findMachine(pair.machineId).service" x-text="$store.demo.findMachine(pair.machineId).service"></span>
                       <article
                         class="operator-card"
                         x-show="pair.operatorId"
@@ -76,7 +76,7 @@
                       <p class="operator-slot" x-show="!pair.operatorId">Drop an operator</p>
                     </article>
                   </template>
-                  <template x-for="operator in $store.demo.freeLoaderOperators()" :key="operator.id">
+                  <template x-for="operator in $store.demo.freeOperators()" :key="operator.id">
                     <article
                       class="operator-card is-loose"
                       :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === operator.id }"
@@ -104,116 +104,22 @@
                       <p class="drag-sub">
                         <span x-text="site.address"></span><span x-show="site.large"> · large</span>
                       </p>
+                      <div class="service-tags">
+                        <template x-for="service in site.services" :key="service">
+                          <span class="tag" :class="'tag-' + service" x-text="service"></span>
+                        </template>
+                      </div>
                       <template x-for="assignment in $store.demo.assignmentsForSite(site.id)" :key="assignment.id">
                         <div class="pair-pill">
                           <span x-text="$store.demo.assignmentLabel(assignment)"></span>
                           <button type="button" class="text-btn" aria-label="Unassign" @pointerdown.stop @click="$store.demo.unassignMachine(assignment.machineId)">Off</button>
                         </div>
                       </template>
-                      <p class="drag-sub drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a pair</p>
+                      <p class="drag-sub drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a machine</p>
                     </article>
                   </template>
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section class="section" aria-labelledby="sanding-heading">
-            <div class="section-h">
-              <div>
-                <p class="eyebrow">02</p>
-                <h2 id="sanding-heading">Sanding</h2>
-                <p>Auto-sanding route for recurring sites, plus on-demand calls added by the office.</p>
-              </div>
-            </div>
-            <div class="fields fields-2 sanding-assign">
-              <label>
-                Driver
-                <select x-model="$store.demo.sanding.operatorId">
-                  <template x-for="operator in $store.demo.operatorsForRole('sanding')" :key="operator.id">
-                    <option :value="operator.id" x-text="operator.name"></option>
-                  </template>
-                </select>
-              </label>
-              <label>
-                Truck
-                <select x-model="$store.demo.sanding.truckId">
-                  <template x-for="truck in $store.demo.sanders" :key="truck.id">
-                    <option :value="truck.id" x-text="truck.name"></option>
-                  </template>
-                </select>
-              </label>
-            </div>
-            <ol class="route">
-              <template x-for="(stop, index) in $store.demo.sanding.stops" :key="stop.id">
-                <li>
-                  <span class="prio" x-text="index + 1"></span>
-                  <div>
-                    <p class="row-title" x-text="$store.demo.site(stop.siteId).name"></p>
-                    <p class="muted" x-text="$store.demo.site(stop.siteId).address"></p>
-                  </div>
-                  <span class="tag" :class="stop.source === 'auto' ? 'tag-pine' : 'tag-brass'" x-text="stop.source === 'auto' ? 'Auto-sand' : 'On demand'"></span>
-                  <button type="button" class="text-btn" x-show="stop.source === 'ondemand'" @click="$store.demo.removeStop(stop.id)">Remove</button>
-                </li>
-              </template>
-            </ol>
-            <div class="add-row">
-              <label>
-                On-demand site
-                <select x-model="$store.demo.onDemandSiteId" :disabled="!$store.demo.openSandSites().length">
-                  <template x-for="site in $store.demo.openSandSites()" :key="site.id">
-                    <option :value="site.id" x-text="site.name"></option>
-                  </template>
-                </select>
-              </label>
-              <button type="button" class="btn" @click="$store.demo.addOnDemand()" :disabled="!$store.demo.openSandSites().length">Add call</button>
-            </div>
-          </section>
-
-          <section class="section" aria-labelledby="haul-heading">
-            <div class="section-h">
-              <div>
-                <p class="eyebrow">03</p>
-                <h2 id="haul-heading">Hauling</h2>
-                <p>Numbered priority. Moving a site updates that driver’s phone in the same order.</p>
-              </div>
-            </div>
-            <div class="stack">
-              <template x-for="(item, index) in $store.demo.haulQueue" :key="item.id">
-                <article class="haul-row">
-                  <p class="prio prio-lg" x-text="'#' + (index + 1)"></p>
-                  <div class="fields fields-3">
-                    <label>
-                      Site
-                      <select x-model="item.siteId">
-                        <template x-for="site in $store.demo.sites" :key="site.id">
-                          <option :value="site.id" x-text="site.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                    <label>
-                      Truck
-                      <select x-model="item.truckId">
-                        <template x-for="truck in $store.demo.haulTrucks" :key="truck.id">
-                          <option :value="truck.id" x-text="truck.hasPup ? truck.name + ' + pup' : truck.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                    <label>
-                      Operator
-                      <select x-model="item.operatorId">
-                        <template x-for="operator in $store.demo.operatorsForRole('haul')" :key="operator.id">
-                          <option :value="operator.id" x-text="operator.name"></option>
-                        </template>
-                      </select>
-                    </label>
-                  </div>
-                  <div class="move">
-                    <button type="button" @click="$store.demo.moveHaul(index, -1)" :disabled="index === 0" :aria-label="'Move ' + $store.demo.site(item.siteId).name + ' up'">Up</button>
-                    <button type="button" @click="$store.demo.moveHaul(index, 1)" :disabled="index === $store.demo.haulQueue.length - 1" :aria-label="'Move ' + $store.demo.site(item.siteId).name + ' down'">Down</button>
-                  </div>
-                </article>
-              </template>
             </div>
           </section>
 
@@ -252,7 +158,7 @@
             <div class="sms" id="sms-preview">
               <p class="eyebrow">Client SMS preview</p>
               <p class="sms-line" x-text="$store.demo.latestSms() || $store.demo.sampleSms()"></p>
-              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Haul and sanding messages pick up queue position when a driver clocks in. Nothing is sent.</p>
+              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Nothing is sent.</p>
               <p class="muted" x-show="$store.demo.latestSms()">Preview of the latest clock-in. Nothing is sent.</p>
             </div>
           </section>
@@ -262,15 +168,10 @@
           <div class="preview-bar">
             <p class="eyebrow">Driver preview</p>
             <p class="preview-help">This switch is for the walkthrough. A driver only sees their own jobs.</p>
-            <div class="seg" role="group" aria-label="Driver role">
-              <button type="button" :class="{ 'is-on': $store.demo.role === 'loader' }" @click="$store.demo.setRole('loader')">Loader</button>
-              <button type="button" :class="{ 'is-on': $store.demo.role === 'sanding' }" @click="$store.demo.setRole('sanding')">Sanding</button>
-              <button type="button" :class="{ 'is-on': $store.demo.role === 'haul' }" @click="$store.demo.setRole('haul')">Haul</button>
-            </div>
             <label>
               Operator
               <select x-model="$store.demo.operatorId" @change="$store.demo.onOperatorChange()">
-                <template x-for="operator in $store.demo.operatorsForRole()" :key="operator.id">
+                <template x-for="operator in $store.demo.operators" :key="operator.id">
                   <option :value="operator.id" x-text="operator.name"></option>
                 </template>
               </select>
@@ -296,22 +197,15 @@
                   <h2>Start shift</h2>
                   <p class="phone-copy">Enter the hour meter before the first site. A reading below the last one is rejected.</p>
                   <label>
-                    <span x-text="$store.demo.role === 'loader' ? 'Loader' : 'Truck'"></span>
+                    Machine
                     <select x-model="$store.demo.draftMachineId" @change="$store.demo.syncPupDefault()">
-                      <template x-for="machine in $store.demo.machinesForRole()" :key="machine.id">
+                      <template x-for="machine in $store.demo.machines" :key="machine.id">
                         <option :value="machine.id" x-text="machine.name"></option>
                       </template>
                     </select>
                   </label>
-                  <label x-show="$store.demo.role === 'loader'">
-                    Implement
-                    <select x-model="$store.demo.draftImplementId">
-                      <template x-for="tool in $store.demo.implements" :key="tool.id">
-                        <option :value="tool.id" x-text="tool.name"></option>
-                      </template>
-                    </select>
-                  </label>
-                  <label class="check" x-show="$store.demo.role === 'haul' && $store.demo.truckHasPup($store.demo.draftMachineId)">
+                  <p class="phone-copy" x-show="$store.demo.selectedMachine() && $store.demo.selectedMachine().implementId" x-text="$store.demo.implementName($store.demo.selectedMachine().implementId)"></p>
+                  <label class="check" x-show="$store.demo.selectedMachine() && $store.demo.selectedMachine().hasPup">
                     <input type="checkbox" x-model="$store.demo.draftPup" />
                     Pup attached
                   </label>
@@ -431,7 +325,7 @@
                       </div>
                     </div>
 
-                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'haul'">
+                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'hauling'">
                       <p class="flow-label">Snow loads this visit</p>
                       <p class="load-count" x-text="$store.demo.visits[$store.demo.shownJob().id].loads"></p>
                       <button type="button" class="load-plus" @click="$store.demo.bumpLoads($store.demo.shownJob().id, 1)" :disabled="!$store.demo.canLog()">+1 snow load</button>
