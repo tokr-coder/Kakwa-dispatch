@@ -33,7 +33,7 @@
 
       <div class="workspace" :data-pane="$store.demo.pane">
         <main class="office" id="dispatch">
-          <section class="section" aria-labelledby="loaders-heading">
+          <section class="section section-loaders" aria-labelledby="loaders-heading">
             <div class="section-h">
               <div>
                 <p class="eyebrow">01</p>
@@ -42,7 +42,7 @@
               </div>
             </div>
             <div class="pair-board">
-              <div>
+              <div class="pair-col pair-col-machines">
                 <p class="board-label">Machines</p>
                 <div class="stack">
                   <template x-for="pair in $store.demo.loaderPairs" :key="pair.machineId">
@@ -57,14 +57,12 @@
                       @pointerdown="$store.demo.beginPointerDrag($event, 'machine', pair.machineId)"
                     >
                       <p class="drag-title" x-text="$store.demo.findMachine(pair.machineId).name"></p>
-                      <p x-text="$store.demo.implementName(pair.implementId)"></p>
-                      <p class="muted" x-text="pair.operatorId ? $store.demo.operatorName(pair.operatorId) : 'No operator'"></p>
-                      <span class="tag" x-show="$store.demo.siteNameForMachine(pair.machineId)" x-text="$store.demo.siteNameForMachine(pair.machineId)"></span>
+                      <p class="drag-sub" x-text="$store.demo.machineCardLine(pair)"></p>
                     </article>
                   </template>
                 </div>
               </div>
-              <div>
+              <div class="pair-col pair-col-operators">
                 <p class="board-label">Operators</p>
                 <div class="stack">
                   <template x-for="operator in $store.demo.operatorsForRole('loader')" :key="operator.id">
@@ -79,36 +77,36 @@
                       @pointerdown="$store.demo.beginPointerDrag($event, 'operator', operator.id)"
                     >
                       <p class="drag-title" x-text="operator.name"></p>
-                      <p class="muted" x-text="$store.demo.operatorPairText(operator)"></p>
-                      <span class="tag" x-show="$store.demo.operatorAssigned(operator.id)">On a site</span>
+                      <p class="drag-sub" x-text="$store.demo.operatorPairText(operator)"></p>
                     </article>
                   </template>
                 </div>
               </div>
-            </div>
-            <p class="board-label sites-label">Sites</p>
-            <div class="site-board">
-              <template x-for="site in $store.demo.sites" :key="site.id">
-                <article
-                  class="site-drop"
-                  :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'site' && $store.demo.dropHint.id === site.id }"
-                  data-drop="site"
-                  :data-id="site.id"
-                >
-                  <div class="card-top">
-                    <h3 x-text="site.name"></h3>
-                    <span class="tag" x-show="site.large">Large site</span>
-                  </div>
-                  <p class="muted" x-text="site.address"></p>
-                  <template x-for="assignment in $store.demo.assignmentsForSite(site.id)" :key="assignment.id">
-                    <div class="pair-pill">
-                      <span x-text="$store.demo.assignmentLabel(assignment)"></span>
-                      <button type="button" class="text-btn" @pointerdown.stop @click="$store.demo.unassignMachine(assignment.machineId)">Unassign</button>
-                    </div>
+              <div class="pair-col pair-col-sites">
+                <p class="board-label">Sites</p>
+                <div class="site-board">
+                  <template x-for="site in $store.demo.sites" :key="site.id">
+                    <article
+                      class="site-drop"
+                      :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'site' && $store.demo.dropHint.id === site.id }"
+                      data-drop="site"
+                      :data-id="site.id"
+                    >
+                      <h3 x-text="site.name"></h3>
+                      <p class="drag-sub">
+                        <span x-text="site.address"></span><span x-show="site.large"> · large</span>
+                      </p>
+                      <template x-for="assignment in $store.demo.assignmentsForSite(site.id)" :key="assignment.id">
+                        <div class="pair-pill">
+                          <span x-text="$store.demo.assignmentLabel(assignment)"></span>
+                          <button type="button" class="text-btn" aria-label="Unassign" @pointerdown.stop @click="$store.demo.unassignMachine(assignment.machineId)">Off</button>
+                        </div>
+                      </template>
+                      <p class="drag-sub drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a pair</p>
+                    </article>
                   </template>
-                  <p class="muted drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a pair here</p>
-                </article>
-              </template>
+                </div>
+              </div>
             </div>
           </section>
 

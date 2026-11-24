@@ -130,21 +130,29 @@ textarea { min-height: 84px; resize: vertical; }
 }
 .section-h p { margin-top: 6px; max-width: 40rem; }
 .card-list, .stack { display: flex; flex-direction: column; gap: 10px; }
-.pair-board, .site-board { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pair-board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.pair-col-sites { grid-column: 1 / -1; }
+.pair-col .stack { gap: 6px; }
+.site-board { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .board-label {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
-.sites-label { margin: 16px 0 8px; }
 .drag-card, .site-drop {
   background: white;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-height: 44px;
 }
 .drag-card {
   cursor: grab;
@@ -157,31 +165,35 @@ textarea { min-height: 84px; resize: vertical; }
   outline-offset: 2px;
   opacity: 1;
 }
-.drag-title {
+.drag-title, .site-drop h3 {
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 1.35rem;
+  font-size: 1.05rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  line-height: 1.1;
+  line-height: 1.05;
+  overflow-wrap: break-word;
 }
-.site-drop { min-height: 96px; }
-.site-drop h3 {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 1.25rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+.drag-sub {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  overflow-wrap: break-word;
 }
 .pair-pill {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 4px;
   background: #f4f7f5;
-  border-radius: 10px;
-  padding: 6px 8px;
+  border-radius: 8px;
+  padding: 2px 4px 2px 6px;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
-.drop-hint { margin-top: 8px; }
+.pair-pill .text-btn { min-height: 32px; min-width: 32px; font-size: 0.75rem; }
+.drop-hint { margin-top: 2px; }
 .drag-ghost {
   position: fixed;
   z-index: 40;
@@ -465,9 +477,29 @@ textarea { min-height: 84px; resize: vertical; }
   .top, .workspace { padding-left: 14px; padding-right: 14px; }
   .top { flex-direction: column; align-items: stretch; }
   .top-side { align-items: stretch; }
-  .fields-4, .fields-3, .fields-2, .log li, .route li, .haul-row, .pair-board, .site-board {
+  .fields-4, .fields-3, .fields-2, .log li, .route li, .haul-row {
     grid-template-columns: 1fr;
   }
+  .section-loaders { padding: 10px; }
+  .section-loaders .section-h { margin-bottom: 8px; }
+  .section-loaders .section-h h2 { font-size: 1.35rem; }
+  .section-loaders .section-h p { display: none; }
+  .pair-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .pair-col-operators { order: 1; }
+  .pair-col-machines { order: 2; }
+  .pair-col-sites { order: 3; grid-column: auto; }
+  .site-board { grid-template-columns: 1fr; gap: 4px; }
+  .pair-col .stack { gap: 4px; }
+  .board-label { font-size: 0.62rem; letter-spacing: 0.04em; margin-bottom: 3px; }
+  .drag-card, .site-drop { padding: 5px 6px; }
+  .drag-title, .site-drop h3 { font-size: 0.84rem; }
+  .drag-sub, .pair-pill { font-size: 0.68rem; }
+  .pair-pill { flex-wrap: nowrap; margin-top: 3px; padding: 0 2px 0 4px; }
+  .pair-pill span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pair-pill .text-btn { min-width: 28px; min-height: 28px; padding: 0; flex: none; }
   .route li { justify-items: start; }
   .workspace[data-pane="office"] .phone-column { display: none; }
   .workspace[data-pane="driver"] .office { display: none; }

@@ -201,17 +201,22 @@ export function createDemoStore() {
     },
 
     operatorPairText(operator) {
-      const usualMachine = this.findMachine(operator.usualMachineId)
-      const usual = `${usualMachine.name} · ${this.implementName(operator.usualImplementId)}`
+      const usual = this.findMachine(operator.usualMachineId)
       const pair = this.loaderPairs.find((item) => item.operatorId === operator.id)
-      if (!pair) return `Usual ${usual} · not paired`
-      const now = `${this.findMachine(pair.machineId).name} · ${this.implementName(pair.implementId)}`
-      if (pair.machineId === operator.usualMachineId) return `Paired · ${now}`
-      return `Now ${now} · usual ${usual}`
+      if (!pair) return `Usual ${usual.name}`
+      const now = this.findMachine(pair.machineId)
+      if (pair.machineId === operator.usualMachineId) return `${now.name} · ${this.implementName(pair.implementId)}`
+      return `${now.name} · usual ${usual.name}`
+    },
+
+    machineCardLine(pair) {
+      const who = pair.operatorId ? this.operatorName(pair.operatorId).split(' ')[0] : 'Open'
+      return `${this.implementName(pair.implementId)} · ${who}`
     },
 
     assignmentLabel(assignment) {
-      return `${this.operatorName(assignment.operatorId)} · ${this.findMachine(assignment.machineId).name} · ${this.implementName(assignment.implementId)}`
+      const first = this.operatorName(assignment.operatorId).split(' ')[0]
+      return `${first} · ${this.findMachine(assignment.machineId).name}`
     },
 
     clearAssignmentForMachine(machineId) {
@@ -288,6 +293,21 @@ export function createDemoStore() {
       return { kind: zone.dataset.drop, id: zone.dataset.id }
     },
 
+    nudgeDragScroll() {
+      if (!this.drag?.active) return false
+      const y = this.drag.y
+      const edge = 72
+      const view = window.innerHeight
+      let delta = 0
+      if (y < edge) delta = -Math.max(8, Math.round(((edge - y) / edge) * 28))
+      else if (y > view - edge) delta = Math.max(8, Math.round(((y - (view - edge)) / edge) * 28))
+      if (!delta) return false
+      const scroller = document.scrollingElement
+      const before = scroller.scrollTop
+      scroller.scrollTop = before + delta
+      return scroller.scrollTop !== before
+    },
+
     beginPointerDrag(event, type, id) {
       if (event.button != null && event.button !== 0) return
       if (event.target.closest('button, a, input, textarea, select')) return
@@ -296,6 +316,11 @@ export function createDemoStore() {
       const startX = event.clientX
       const startY = event.clientY
       this.drag = { type, id, x: startX, y: startY, active: false }
+      const tick = () => {
+        if (!this.drag) return
+        if (this.nudgeDragScroll()) this.dropHint = this.zoneAt(this.drag.x, this.drag.y)
+        this.dragFrame = requestAnimationFrame(tick)
+      }
       const move = (pointerEvent) => {
         if (!this.drag) return
         this.drag.x = pointerEvent.clientX
@@ -304,11 +329,16 @@ export function createDemoStore() {
           this.drag.active = true
           source.style.pointerEvents = 'none'
         }
+        if (this.nudgeDragScroll()) {
+          this.dropHint = this.zoneAt(this.drag.x, this.drag.y)
+          return
+        }
         this.dropHint = this.drag.active ? this.zoneAt(pointerEvent.clientX, pointerEvent.clientY) : null
       }
       const up = (pointerEvent) => {
         window.removeEventListener('pointermove', move)
         window.removeEventListener('pointerup', up)
+        cancelAnimationFrame(this.dragFrame)
         if (this.drag?.active) {
           const zone = this.zoneAt(pointerEvent.clientX, pointerEvent.clientY)
           if (zone) this.finishDrop(zone.kind, zone.id)
@@ -319,6 +349,7 @@ export function createDemoStore() {
       }
       window.addEventListener('pointermove', move)
       window.addEventListener('pointerup', up)
+      this.dragFrame = requestAnimationFrame(tick)
     },
 
     finishDrop(kind, id) {
