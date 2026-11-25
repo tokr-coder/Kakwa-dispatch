@@ -1,0 +1,70 @@
+export const seed = {
+  sites: [
+    {
+      id: 'site-northgate',
+      name: 'Northgate Plaza',
+      address: '10420 99 Ave',
+      services: ['clearing', 'hauling'],
+    },
+    {
+      id: 'site-pinnacle',
+      name: 'Pinnacle Industrial',
+      address: '8201 116 St',
+      services: ['clearing', 'hauling'],
+    },
+    {
+      id: 'site-riverstone',
+      name: 'Riverstone Apartments',
+      address: '9805 100 St',
+      services: ['clearing'],
+    },
+    {
+      id: 'site-creekview',
+      name: 'Creekview Medical',
+      address: '11203 100 St',
+      services: ['sanding'],
+    },
+    {
+      id: 'site-horizon',
+      name: 'Horizon School',
+      address: '7302 97 Ave',
+      services: ['clearing', 'sanding'],
+    },
+    {
+      id: 'site-westwind',
+      name: 'Westwind Retail',
+      address: '12202 100 St',
+      services: ['sanding'],
+    },
+    {
+      id: 'site-lakeland',
+      name: 'Lakeland Warehouse',
+      address: '15501 97 St',
+      services: ['hauling'],
+    },
+    {
+      id: 'site-cedar',
+      name: 'Cedar Court Clinic',
+      address: '10112 105 Ave',
+      services: ['sanding', 'clearing'],
+    },
+  ],
+  machines: [
+    { id: 'ld-12', name: 'LD-12', service: 'clearing', detail: '14 ft pusher' },
+    { id: 'ld-07', name: 'LD-07', service: 'clearing', detail: '12 ft angle plow' },
+    { id: 'ld-19', name: 'LD-19', service: 'clearing', detail: 'Snow blower' },
+    { id: 'st-3', name: 'ST-3', service: 'sanding', detail: 'Sander' },
+    { id: 'st-6', name: 'ST-6', service: 'sanding', detail: 'Sander' },
+    { id: 'ht-2', name: 'HT-2', service: 'hauling', detail: 'Haul truck · pup' },
+    { id: 'ht-5', name: 'HT-5', service: 'hauling', detail: 'Haul truck' },
+  ],
+  operators: [
+    { id: 'op-mara', name: 'Mara Ellison', usualMachineId: 'ld-12' },
+    { id: 'op-chris', name: 'Chris Adeyemi', usualMachineId: 'ld-07' },
+    { id: 'op-jonah', name: 'Jonah Park', usualMachineId: 'ld-19' },
+    { id: 'op-priya', name: 'Priya Shah', usualMachineId: 'st-3' },
+    { id: 'op-drew', name: 'Drew Lang', usualMachineId: 'st-6' },
+    { id: 'op-evan', name: 'Evan Brooks', usualMachineId: 'ht-2' },
+    { id: 'op-sam', name: 'Sam Ortega', usualMachineId: 'ht-5' },
+  ],
+}
