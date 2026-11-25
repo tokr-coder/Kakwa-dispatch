@@ -1,575 +1,254 @@
 import { seed } from './seed.js'
 
-function emptyVisit() {
+function emptyDraft() {
   return {
-    clockIn: null,
-    clockOut: null,
-    weather: null,
-    tempC: null,
-    iceRock: 0,
-    loads: 0,
-    notes: '',
-    weatherNote: '',
-    sms: '',
+    siteId: null,
+    placement: 'after',
+    machineIds: [],
+    operators: {},
+    driverIndex: 0,
   }
-}
-
-function formatTime(iso) {
-  return new Date(iso).toLocaleTimeString('en-CA', {
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'America/Edmonton',
-  })
-}
-
-function formatDuration(startIso, endIso) {
-  const mins = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000))
-  const hours = Math.floor(mins / 60)
-  const minutes = mins % 60
-  return `${hours}h ${String(minutes).padStart(2, '0')}m`
 }
 
 export function createDemoStore() {
   const data = structuredClone(seed)
-  const jobIds = data.assignments.map((item) => item.id)
 
   return {
-    pane: 'office',
-    operatorId: 'op-mara',
-    selectedJobId: null,
+    screen: 'plan',
     notice: '',
-    hourError: '',
-    endError: '',
-    showEndShift: false,
-    draftStartHours: '',
-    draftEndHours: '',
-    draftMachineId: 'ld-12',
-    draftImplementId: 'imp-pusher',
-    draftPup: false,
-    clock: '',
-    driverJobs: [],
-    blankJob: { id: '_none', kind: '', siteId: 'site-northgate', title: '', position: null },
-    drag: null,
-    dropHint: null,
     sites: data.sites,
-    operators: data.operators,
     machines: data.machines,
-    implements: data.implements,
-    pairs: data.pairs,
-    assignments: data.assignments,
-    shifts: Object.fromEntries(data.operators.map((operator) => [operator.id, null])),
-    visits: Object.fromEntries([...jobIds, '_none'].map((id) => [id, emptyVisit()])),
-
-    tick() {
-      this.clock = new Date().toLocaleTimeString('en-CA', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Edmonton',
-      })
-    },
-
-    flash(message) {
-      this.notice = message
-      clearTimeout(this.noticeTimer)
-      this.noticeTimer = setTimeout(() => {
-        this.notice = ''
-      }, 2400)
-    },
+    operators: data.operators,
+    plan: [],
+    draft: emptyDraft(),
 
     site(id) {
       return this.sites.find((item) => item.id === id)
     },
 
+    machine(id) {
+      return this.machines.find((item) => item.id === id)
+    },
+
+    operator(id) {
+      return this.operators.find((item) => item.id === id)
+    },
+
     operatorName(id) {
-      return this.operators.find((item) => item.id === id)?.name ?? ''
+      return this.operator(id)?.name ?? ''
     },
 
-    findMachine(id) {
-      return this.machines.find((item) => item.id === id) ?? null
+    usualOperator(machineId) {
+      return this.operators.find((item) => item.usualMachineId === machineId) ?? null
     },
 
-    implementName(id) {
-      return this.implements.find((item) => item.id === id)?.name ?? ''
+    siteInPlan(siteId) {
+      return this.plan.some((step) => step.sites.some((item) => item.siteId === siteId))
     },
 
-    serviceLabel(service) {
-      if (!service) return ''
-      return service.charAt(0).toUpperCase() + service.slice(1)
+    draftSite() {
+      return this.site(this.draft.siteId) ?? { id: '', name: '', address: '', services: [] }
     },
 
-    roleLabel() {
-      const pair = this.pairs.find((item) => item.operatorId === this.operatorId)
-      const machine = pair ? this.findMachine(pair.machineId) : this.selectedMachine()
-      return this.serviceLabel(machine?.service) || 'Operator'
+    targetStepIndex() {
+      if (!this.plan.length || this.draft.placement === 'after') return this.plan.length
+      return this.plan.length - 1
     },
 
-    activeShift() {
-      return this.shifts[this.operatorId]
+    crewInStep(stepIndex) {
+      const step = this.plan[stepIndex]
+      if (!step) return []
+      return step.sites.flatMap((item) => item.crew)
     },
 
-    canLog() {
-      const shift = this.activeShift()
-      return Boolean(shift && shift.endHours == null)
-    },
-
-    ensureVisit(id) {
-      if (!this.visits[id]) this.visits[id] = emptyVisit()
-      return this.visits[id]
-    },
-
-    selectedMachine() {
-      return this.findMachine(this.draftMachineId)
-    },
-
-    syncPupDefault() {
-      this.draftPup = Boolean(this.selectedMachine()?.hasPup)
-      this.draftImplementId = this.selectedMachine()?.implementId ?? ''
-    },
-
-    applyDraftFromAssignment() {
-      const assignment = this.assignments.find((item) => item.operatorId === this.operatorId)
-      const pair = this.pairs.find((item) => item.operatorId === this.operatorId)
-      this.draftMachineId = assignment?.machineId ?? pair?.machineId ?? this.machines[0].id
-      const machine = this.findMachine(this.draftMachineId)
-      this.draftImplementId = machine?.implementId ?? ''
-      this.draftPup = Boolean(machine?.hasPup)
-      this.draftStartHours = ''
-      this.draftEndHours = ''
-    },
-
-    onOperatorChange() {
-      this.selectedJobId = null
-      this.hourError = ''
-      this.endError = ''
-      this.showEndShift = false
-      this.notice = ''
-      if (!this.shifts[this.operatorId]) this.applyDraftFromAssignment()
-    },
-
-    assignmentsForSite(siteId) {
-      return this.assignments.filter((item) => item.siteId === siteId)
-    },
-
-    machineAssigned(machineId) {
-      return this.assignments.some((item) => item.machineId === machineId)
-    },
-
-    operatorAssigned(operatorId) {
-      return this.assignments.some((item) => item.operatorId === operatorId)
-    },
-
-    siteNameForMachine(machineId) {
-      const assignment = this.assignments.find((item) => item.machineId === machineId)
-      return assignment ? this.site(assignment.siteId).name : ''
-    },
-
-    freeOperators() {
-      const taken = new Set(this.pairs.map((item) => item.operatorId).filter(Boolean))
-      return this.operators.filter((operator) => !taken.has(operator.id))
-    },
-
-    machineDetail(machine) {
-      if (machine.implementId) return this.implementName(machine.implementId)
-      if (machine.hasPup) return 'Pup attached'
+    priorUse(kind, id, beforeIndex) {
+      for (let index = beforeIndex - 1; index >= 0; index -= 1) {
+        const hit = this.plan[index].sites.find((item) => item.crew.some((seat) => seat[kind] === id))
+        if (hit) return this.site(hit.siteId).name
+      }
       return ''
     },
 
-    operatorSeatText(operatorId) {
-      const operator = this.operators.find((item) => item.id === operatorId)
-      if (!operator?.usualMachineId) return ''
-      const usual = this.findMachine(operator.usualMachineId)
-      const pair = this.pairs.find((item) => item.operatorId === operatorId)
-      if (!pair) return `Usual ${usual.name}`
-      if (pair.machineId === operator.usualMachineId) return ''
-      return `Usual ${usual.name}`
+    machineChoice(machineId) {
+      const machine = this.machine(machineId)
+      const needed = this.draftSite()?.services.includes(machine.service)
+      if (!needed) return { state: 'unneeded' }
+      const target = this.targetStepIndex()
+      const busy = this.crewInStep(target).find((seat) => seat.machineId === machineId)
+      if (busy) return { state: 'taken', where: this.site(this.plan[target].sites.find((item) => item.crew.some((seat) => seat.machineId === machineId)).siteId).name }
+      const from = this.priorUse('machineId', machineId, target)
+      if (from) return { state: 'coming', where: from }
+      return { state: 'free' }
     },
 
-    assignmentLabel(assignment) {
-      const first = this.operatorName(assignment.operatorId).split(' ')[0]
-      return `${first} · ${this.findMachine(assignment.machineId).name}`
-    },
-
-    clearAssignmentForMachine(machineId) {
-      const assignment = this.assignments.find((item) => item.machineId === machineId)
-      if (!assignment) return
-      this.assignments = this.assignments.filter((item) => item.id !== assignment.id)
-      if (this.selectedJobId === assignment.id) this.selectedJobId = null
-    },
-
-    refreshLoaderDraft(operatorId) {
-      if (this.operatorId !== operatorId || this.shifts[operatorId]) return
-      this.applyDraftFromAssignment()
-    },
-
-    pairOperatorWithMachine(operatorId, machineId) {
-      const machine = this.pairs.find((item) => item.machineId === machineId)
-      if (!machine || machine.operatorId === operatorId) return
-      const displaced = machine.operatorId
-      const previous = this.pairs.find((item) => item.operatorId === operatorId)
-      if (previous && previous.machineId !== machineId) {
-        previous.operatorId = null
-        this.clearAssignmentForMachine(previous.machineId)
+    driverChoice(operatorId, machineId) {
+      const target = this.targetStepIndex()
+      const onThisMachine = this.draft.operators[machineId] === operatorId
+      const inDraft = this.draft.machineIds.some((id) => id !== machineId && this.draft.operators[id] === operatorId)
+      const inStep = this.crewInStep(target).some((seat) => seat.operatorId === operatorId)
+      if ((inDraft || inStep) && !onThisMachine) {
+        return { state: 'taken' }
       }
-      machine.operatorId = operatorId
-      const assignment = this.assignments.find((item) => item.machineId === machineId)
-      if (assignment) assignment.operatorId = operatorId
-      this.refreshLoaderDraft(operatorId)
-      if (displaced) this.refreshLoaderDraft(displaced)
+      const from = this.priorUse('operatorId', operatorId, target)
+      if (from) return { state: 'coming', where: from }
+      return { state: 'free' }
     },
 
-    assignPairToSite(machineId, siteId) {
-      const pair = this.pairs.find((item) => item.machineId === machineId)
-      if (!pair?.operatorId || !this.site(siteId)) return
-      const existing = this.assignments.find((item) => item.machineId === machineId)
-      if (existing) {
-        existing.siteId = siteId
-        existing.operatorId = pair.operatorId
+    currentDriverMachine() {
+      return this.machine(this.draft.machineIds[this.draft.driverIndex]) ?? { id: '', name: '', detail: '', service: '' }
+    },
+
+    startPlan() {
+      this.notice = ''
+      this.draft = emptyDraft()
+      this.screen = 'site'
+    },
+
+    pickSite(siteId) {
+      if (this.siteInPlan(siteId)) return
+      this.notice = ''
+      this.draft = emptyDraft()
+      this.draft.siteId = siteId
+      this.screen = this.plan.length ? 'when' : 'machines'
+    },
+
+    pickWhen(placement) {
+      this.draft.placement = placement
+      this.draft.machineIds = []
+      this.draft.operators = {}
+      this.screen = 'machines'
+    },
+
+    toggleMachine(machineId) {
+      const choice = this.machineChoice(machineId)
+      if (choice.state === 'unneeded' || choice.state === 'taken') return
+      const selected = this.draft.machineIds.includes(machineId)
+      if (selected) {
+        this.draft.machineIds = this.draft.machineIds.filter((id) => id !== machineId)
+        delete this.draft.operators[machineId]
         return
       }
-      const id = `asg-${Math.random().toString(36).slice(2, 8)}`
-      this.assignments.push({
-        id,
-        siteId,
-        operatorId: pair.operatorId,
-        machineId,
-      })
-      this.ensureVisit(id)
-    },
-
-    unassignMachine(machineId) {
-      const operatorId = this.assignments.find((item) => item.machineId === machineId)?.operatorId
-      this.clearAssignmentForMachine(machineId)
-      if (operatorId) this.refreshLoaderDraft(operatorId)
-    },
-
-    dragLabel() {
-      if (!this.drag) return ''
-      if (this.drag.type === 'operator') return this.operatorName(this.drag.id)
-      const pair = this.pairs.find((item) => item.machineId === this.drag.id)
-      if (!pair) return ''
-      const who = pair.operatorId ? this.operatorName(pair.operatorId) : 'Open machine'
-      return `${this.findMachine(pair.machineId).name} · ${who}`
-    },
-
-    zoneAt(x, y) {
-      const under = document.elementFromPoint(x, y)
-      const zone = under?.closest('[data-drop]')
-      if (!zone) return null
-      return { kind: zone.dataset.drop, id: zone.dataset.id }
-    },
-
-    nudgeDragScroll() {
-      if (!this.drag?.active) return false
-      const y = this.drag.y
-      const edge = 72
-      const view = window.innerHeight
-      let delta = 0
-      if (y < edge) delta = -Math.max(8, Math.round(((edge - y) / edge) * 28))
-      else if (y > view - edge) delta = Math.max(8, Math.round(((y - (view - edge)) / edge) * 28))
-      if (!delta) return false
-      const scroller = document.scrollingElement
-      const before = scroller.scrollTop
-      scroller.scrollTop = before + delta
-      return scroller.scrollTop !== before
-    },
-
-    beginPointerDrag(event, type, id) {
-      if (event.button != null && event.button !== 0) return
-      if (event.target.closest('button, a, input, textarea, select')) return
-      event.preventDefault()
-      const source = event.currentTarget
-      const startX = event.clientX
-      const startY = event.clientY
-      this.drag = { type, id, x: startX, y: startY, active: false }
-      const tick = () => {
-        if (!this.drag) return
-        if (this.nudgeDragScroll()) this.dropHint = this.zoneAt(this.drag.x, this.drag.y)
-        this.dragFrame = requestAnimationFrame(tick)
+      this.draft.machineIds.push(machineId)
+      const usual = this.usualOperator(machineId)
+      if (usual && this.driverChoice(usual.id, machineId).state !== 'taken') {
+        this.draft.operators[machineId] = usual.id
       }
-      const move = (pointerEvent) => {
-        if (!this.drag) return
-        this.drag.x = pointerEvent.clientX
-        this.drag.y = pointerEvent.clientY
-        if (!this.drag.active && Math.hypot(pointerEvent.clientX - startX, pointerEvent.clientY - startY) > 8) {
-          this.drag.active = true
-          source.style.pointerEvents = 'none'
+    },
+
+    goToDrivers() {
+      if (!this.draft.machineIds.length) return
+      this.draft.driverIndex = 0
+      this.screen = 'drivers'
+    },
+
+    pickDriver(operatorId) {
+      const machine = this.currentDriverMachine()
+      if (!machine) return
+      const choice = this.driverChoice(operatorId, machine.id)
+      if (choice.state === 'taken') {
+        this.notice = `${this.operatorName(operatorId)} is already on a machine in this step.`
+        return
+      }
+      this.notice = ''
+      this.draft.operators[machine.id] = operatorId
+    },
+
+    nextDriver() {
+      const machine = this.currentDriverMachine()
+      if (!machine || !this.draft.operators[machine.id]) return
+      if (this.draft.driverIndex < this.draft.machineIds.length - 1) {
+        this.draft.driverIndex += 1
+        this.notice = ''
+        return
+      }
+      this.screen = 'confirm'
+    },
+
+    prevDriver() {
+      if (this.draft.driverIndex > 0) {
+        this.draft.driverIndex -= 1
+        return
+      }
+      this.screen = 'machines'
+    },
+
+    addToPlan() {
+      const crew = this.draft.machineIds.map((machineId) => ({
+        machineId,
+        operatorId: this.draft.operators[machineId],
+      }))
+      if (!crew.length || crew.some((seat) => !seat.operatorId)) return
+      const entry = {
+        id: `stop-${Math.random().toString(36).slice(2, 8)}`,
+        siteId: this.draft.siteId,
+        crew,
+      }
+      if (!this.plan.length || this.draft.placement === 'after') {
+        this.plan.push({ id: `step-${Math.random().toString(36).slice(2, 8)}`, sites: [entry] })
+      } else {
+        this.plan[this.plan.length - 1].sites.push(entry)
+      }
+      this.draft = emptyDraft()
+      this.notice = ''
+      this.screen = 'plan'
+    },
+
+    back() {
+      this.notice = ''
+      if (this.screen === 'site') this.screen = 'plan'
+      else if (this.screen === 'when') this.screen = 'site'
+      else if (this.screen === 'machines') this.screen = this.plan.length ? 'when' : 'site'
+      else if (this.screen === 'drivers') this.prevDriver()
+      else if (this.screen === 'confirm') this.screen = 'drivers'
+    },
+
+    conflictWith(entry, stepIndex) {
+      const seats = this.crewInStep(stepIndex)
+      for (const seat of entry.crew) {
+        if (seats.some((other) => other.machineId === seat.machineId)) {
+          const site = this.plan[stepIndex].sites.find((item) => item.crew.some((other) => other.machineId === seat.machineId))
+          return `${this.machine(seat.machineId).name} is already on ${this.site(site.siteId).name} in that step.`
         }
-        if (this.nudgeDragScroll()) {
-          this.dropHint = this.zoneAt(this.drag.x, this.drag.y)
+      }
+      return ''
+    },
+
+    moveSite(stepIndex, siteIndex, direction) {
+      this.notice = ''
+      const step = this.plan[stepIndex]
+      const entry = step.sites[siteIndex]
+      const targetIndex = stepIndex + direction
+      const aloneAtEnd = direction > 0 && stepIndex === this.plan.length - 1 && step.sites.length === 1
+      if (targetIndex < 0 || aloneAtEnd) return
+      if (targetIndex < this.plan.length) {
+        const message = this.conflictWith(entry, targetIndex)
+        if (message) {
+          this.notice = message
           return
         }
-        this.dropHint = this.drag.active ? this.zoneAt(pointerEvent.clientX, pointerEvent.clientY) : null
       }
-      const up = (pointerEvent) => {
-        window.removeEventListener('pointermove', move)
-        window.removeEventListener('pointerup', up)
-        cancelAnimationFrame(this.dragFrame)
-        if (this.drag?.active) {
-          const zone = this.zoneAt(pointerEvent.clientX, pointerEvent.clientY)
-          if (zone) this.finishDrop(zone.kind, zone.id)
-        }
-        source.style.pointerEvents = ''
-        this.drag = null
-        this.dropHint = null
+      step.sites.splice(siteIndex, 1)
+      let dest = targetIndex
+      if (!step.sites.length) {
+        this.plan.splice(stepIndex, 1)
+        if (direction > 0) dest -= 1
       }
-      window.addEventListener('pointermove', move)
-      window.addEventListener('pointerup', up)
-      this.dragFrame = requestAnimationFrame(tick)
-    },
-
-    finishDrop(kind, id) {
-      const drag = this.drag
-      if (!drag) return
-      if (kind === 'machine' && drag.type === 'operator') this.pairOperatorWithMachine(drag.id, id)
-      if (kind === 'operator' && drag.type === 'machine') this.pairOperatorWithMachine(id, drag.id)
-      if (kind === 'operator' && drag.type === 'operator' && drag.id !== id) {
-        const machine = this.pairs.find((item) => item.operatorId === id)
-        if (machine) this.pairOperatorWithMachine(drag.id, machine.machineId)
-      }
-      if (kind !== 'site') return
-      const machineId = drag.type === 'machine'
-        ? drag.id
-        : this.pairs.find((item) => item.operatorId === drag.id)?.machineId
-      if (machineId) this.assignPairToSite(machineId, id)
-    },
-
-    jobFromAssignment(item) {
-      const machine = this.findMachine(item.machineId)
-      const detail = this.machineDetail(machine)
-      return {
-        id: item.id,
-        kind: machine.service,
-        siteId: item.siteId,
-        operatorId: item.operatorId,
-        machineId: item.machineId,
-        implementId: machine.implementId || null,
-        title: this.site(item.siteId).name,
-        meta: detail ? `${machine.name} · ${detail}` : machine.name,
+      if (dest >= this.plan.length) {
+        this.plan.push({ id: `step-${Math.random().toString(36).slice(2, 8)}`, sites: [entry] })
+      } else {
+        this.plan[dest].sites.push(entry)
       }
     },
 
-    refreshDriverJobs() {
-      const jobs = this.assignments
-        .filter((item) => item.operatorId === this.operatorId)
-        .map((item) => this.jobFromAssignment(item))
-      jobs.forEach((job) => this.ensureVisit(job.id))
-      this.driverJobs = jobs
-      if (this.selectedJobId && !jobs.some((job) => job.id === this.selectedJobId)) {
-        this.selectedJobId = null
-      }
+    canMove(stepIndex, siteIndex, direction) {
+      const step = this.plan[stepIndex]
+      if (direction < 0) return stepIndex > 0
+      return !(stepIndex === this.plan.length - 1 && step.sites.length === 1)
     },
 
-    selectedJob() {
-      return this.driverJobs.find((job) => job.id === this.selectedJobId) ?? null
-    },
-
-    shownJob() {
-      return this.selectedJob() || this.blankJob
-    },
-
-    allJobs() {
-      return this.assignments.map((item) => this.jobFromAssignment(item))
-    },
-
-    statusLabel(id) {
-      const visit = this.visits[id]
-      if (!visit?.clockIn) return 'Not started'
-      if (!visit.clockOut) return 'On site'
-      return 'Done'
-    },
-
-    startShift() {
-      this.hourError = ''
-      const machine = this.findMachine(this.draftMachineId)
-      if (!machine) {
-        this.hourError = 'Choose a machine.'
-        return
-      }
-      const reading = Number(this.draftStartHours)
-      if (!Number.isFinite(reading)) {
-        this.hourError = 'Enter the hour-meter reading.'
-        return
-      }
-      if (reading < machine.lastHours) {
-        this.hourError = `That reading is below the last meter (${machine.lastHours.toFixed(1)}).`
-        return
-      }
-      this.shifts[this.operatorId] = {
-        machineId: machine.id,
-        implementId: machine.implementId || null,
-        pup: machine.hasPup ? this.draftPup : false,
-        startHours: reading,
-        endHours: null,
-      }
-      this.flash('Saved on this phone')
-    },
-
-    endShift() {
-      this.endError = ''
-      const shift = this.activeShift()
-      const reading = Number(this.draftEndHours)
-      if (!shift) return
-      if (!Number.isFinite(reading)) {
-        this.endError = 'Enter the ending hour-meter reading.'
-        return
-      }
-      if (reading < shift.startHours) {
-        this.endError = `Ending hours must be at least the start reading (${shift.startHours.toFixed(1)}).`
-        return
-      }
-      shift.endHours = reading
-      const machine = this.findMachine(shift.machineId)
-      if (machine) machine.lastHours = reading
-      this.showEndShift = false
-      this.flash('Saved on this phone')
-    },
-
-    engineHoursLabel() {
-      const shift = this.activeShift()
-      if (!shift || shift.endHours == null) return ''
-      return `${(shift.endHours - shift.startHours).toFixed(1)} engine hours`
-    },
-
-    shiftMachineLabel() {
-      const shift = this.activeShift()
-      if (!shift) return ''
-      const machine = this.findMachine(shift.machineId)
-      const pup = shift.pup ? ' + pup' : ''
-      const implement = shift.implementId ? ` · ${this.implementName(shift.implementId)}` : ''
-      return `${machine.name}${pup}${implement}`
-    },
-
-    composeSms(job, clockIn) {
-      const site = this.site(job.siteId)
-      const time = formatTime(clockIn).replace(/\.$/, '')
-      return `Kakwa: Arrived at ${site.name} at ${time}. Estimated window 45–75 min.`
-    },
-
-    clockIn(job) {
-      if (!job?.id || job.id === '_none' || !this.canLog()) return
-      const visit = this.ensureVisit(job.id)
-      if (visit.clockIn) return
-      visit.clockIn = new Date().toISOString()
-      visit.sms = this.composeSms(job, visit.clockIn)
-      this.flash('Saved on this phone')
-    },
-
-    clockOut(job) {
-      if (!job?.id || job.id === '_none' || !this.canLog()) return
-      const visit = this.ensureVisit(job.id)
-      if (!visit.clockIn || visit.clockOut) return
-      visit.clockOut = new Date().toISOString()
-      this.flash('Saved on this phone')
-    },
-
-    saveWeatherNote(job) {
-      const visit = this.visits[job?.id]
-      if (!visit?.clockOut) return
-      this.flash(visit.weatherNote.trim() ? 'Weather note kept on this phone' : 'Weather note cleared')
-    },
-
-    bumpIce(id, delta) {
-      if (!this.canLog()) return
-      const visit = this.ensureVisit(id)
-      visit.iceRock = Math.max(0, Math.round((Number(visit.iceRock) + delta) * 10) / 10)
-      this.flash('Saved on this phone')
-    },
-
-    bumpLoads(id, delta) {
-      if (!this.canLog()) return
-      const visit = this.ensureVisit(id)
-      visit.loads = Math.max(0, visit.loads + delta)
-      this.flash('Saved on this phone')
-    },
-
-    saveNotes() {
-      if (!this.canLog()) return
-      this.flash('Saved on this phone')
-    },
-
-    billableLabel(id) {
-      const visit = this.visits[id]
-      if (!visit?.clockIn) return ''
-      if (!visit.clockOut) return 'On site'
-      return `${formatDuration(visit.clockIn, visit.clockOut)} on site`
-    },
-
-    positionText() {
-      return ''
-    },
-
-    detailFor(job, visit) {
-      let base = ''
-      if (job.kind === 'sanding') base = `${Number(visit.iceRock).toFixed(1)} yd ice rock`
-      if (job.kind === 'hauling') {
-        const notes = visit.notes.trim() ? ` · ${visit.notes.trim()}` : ''
-        const noun = visit.loads === 1 ? 'load' : 'loads'
-        base = `${visit.loads} ${noun}${notes}`
-      }
-      const weather = (visit.weatherNote || '').trim()
-      if (weather && base) return `${base} · ${weather}`
-      if (weather) return weather
-      return base || 'Weather not logged'
-    },
-
-    machineSummary(job) {
-      const shift = this.shifts[job.operatorId]
-      if (shift) {
-        const machine = this.findMachine(shift.machineId)
-        const pup = shift.pup ? ' + pup' : ''
-        const implement = shift.implementId ? ` · ${this.implementName(shift.implementId)}` : ''
-        return `${machine.name}${pup}${implement}`
-      }
-      const machine = this.findMachine(job.machineId)
-      const detail = this.machineDetail(machine)
-      return detail ? `${machine.name} · ${detail}` : machine.name
-    },
-
-    readout() {
-      return this.allJobs()
-        .map((job) => ({ job, visit: this.visits[job.id] }))
-        .filter((row) => row.visit?.clockIn)
-        .sort((a, b) => a.visit.clockIn.localeCompare(b.visit.clockIn))
-        .map(({ job, visit }) => ({
-          id: job.id,
-          timeIn: formatTime(visit.clockIn),
-          timeOut: visit.clockOut ? formatTime(visit.clockOut) : '—',
-          billable: visit.clockOut ? formatDuration(visit.clockIn, visit.clockOut) : 'On site',
-          who: this.operatorName(job.operatorId),
-          machine: this.machineSummary(job),
-          site: this.site(job.siteId).name,
-          detail: this.detailFor(job, visit),
-        }))
-    },
-
-    shiftSummaries() {
-      return this.operators
-        .filter((operator) => this.shifts[operator.id])
-        .map((operator) => {
-          const shift = this.shifts[operator.id]
-          const machine = this.findMachine(shift.machineId)
-          const pup = shift.pup ? ' + pup' : ''
-          const implement = shift.implementId ? ` · ${this.implementName(shift.implementId)}` : ''
-          const engine = shift.endHours == null
-            ? 'Shift open'
-            : `${(shift.endHours - shift.startHours).toFixed(1)} engine h`
-          return {
-            id: operator.id,
-            label: `${operator.name} · ${machine.name}${pup}${implement}`,
-            detail: `Start ${shift.startHours.toFixed(1)} · ${engine}`,
-          }
-        })
-    },
-
-    latestSms() {
-      const rows = Object.values(this.visits)
-        .filter((visit) => visit?.sms)
-        .sort((a, b) => b.clockIn.localeCompare(a.clockIn))
-      return rows[0]?.sms ?? ''
-    },
-
-    sampleSms() {
-      return 'Kakwa: Arrived at Pinnacle Industrial at 6:42 p.m. You are #1 in the haul queue. Estimated window 45–75 min.'
+    placementLabel() {
+      if (!this.plan.length || this.draft.placement === 'after') return `Step ${this.plan.length + 1}`
+      return `With step ${this.plan.length}`
     },
   }
 }

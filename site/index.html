@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Kakwa Dispatch — Winter demo</title>
+    <title>Kakwa Dispatch — Plan the shift</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,355 +13,194 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect fill='%231e4d3a' width='32' height='32' rx='6'/%3E%3Cpath fill='%23f6c445' d='M8 20h16l-2 4H10zm2-3h12l-1.2-6H11.2z'/%3E%3C/svg%3E" />
   </head>
   <body x-data x-cloak>
-    <div class="app" x-effect="$store.demo.refreshDriverJobs()">
+    <div class="shell">
       <header class="top">
-        <div class="brand">
-          <p class="mark">Kakwa</p>
-          <div>
-            <p class="product">Winter dispatch</p>
-            <p class="demo-note">Sample data. Logs reset on refresh. Nothing is texted or billed.</p>
-          </div>
-        </div>
-        <div class="top-side">
-          <p class="who-office">Quinn · Dispatch</p>
-          <div class="pane-switch" role="group" aria-label="Show office or driver">
-            <button type="button" :class="{ 'is-on': $store.demo.pane === 'office' }" @click="$store.demo.pane = 'office'">Office</button>
-            <button type="button" :class="{ 'is-on': $store.demo.pane === 'driver' }" @click="$store.demo.pane = 'driver'">Driver</button>
-          </div>
+        <p class="mark">Kakwa</p>
+        <div>
+          <p class="product">Dispatch</p>
+          <p class="demo-note">Quinn · plan the shift. Sample data. Resets on refresh.</p>
         </div>
       </header>
 
-      <div class="workspace" :data-pane="$store.demo.pane">
-        <main class="office" id="dispatch">
-          <section class="section section-dispatch" aria-labelledby="dispatch-heading">
-            <div class="section-h">
-              <div>
-                <h2 id="dispatch-heading">Dispatch</h2>
-                <p>Drag an operator into a machine, then drag the machine onto a site. Tags on a site are the services that lot needs.</p>
-              </div>
-            </div>
-            <div class="pair-board">
-              <div class="pair-col">
-                <p class="board-label">Machines</p>
-                <div class="stack">
-                  <template x-for="pair in $store.demo.pairs" :key="pair.machineId">
-                    <article
-                      class="equip-card"
-                      :class="{
-                        'is-assigned': $store.demo.machineAssigned(pair.machineId),
-                        'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'machine' && $store.demo.dropHint.id === pair.machineId
-                      }"
-                      data-drop="machine"
-                      :data-id="pair.machineId"
-                      @pointerdown="$store.demo.beginPointerDrag($event, 'machine', pair.machineId)"
-                    >
-                      <p class="drag-title">
-                        <span x-text="$store.demo.findMachine(pair.machineId).name"></span><span class="drag-sub" x-show="$store.demo.siteNameForMachine(pair.machineId)" x-text="' · ' + $store.demo.siteNameForMachine(pair.machineId)"></span>
-                      </p>
-                      <p class="drag-sub" x-show="$store.demo.machineDetail($store.demo.findMachine(pair.machineId))" x-text="$store.demo.machineDetail($store.demo.findMachine(pair.machineId))"></p>
-                      <span class="tag" :class="'tag-' + $store.demo.findMachine(pair.machineId).service" x-text="$store.demo.findMachine(pair.machineId).service"></span>
-                      <article
-                        class="operator-card"
-                        x-show="pair.operatorId"
-                        :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === pair.operatorId }"
-                        data-drop="operator"
-                        :data-id="pair.operatorId"
-                        @pointerdown.stop="$store.demo.beginPointerDrag($event, 'operator', pair.operatorId)"
-                      >
-                        <p class="drag-title" x-text="$store.demo.operatorName(pair.operatorId)"></p>
-                        <p class="drag-sub" x-show="$store.demo.operatorSeatText(pair.operatorId)" x-text="$store.demo.operatorSeatText(pair.operatorId)"></p>
-                      </article>
-                      <p class="operator-slot" x-show="!pair.operatorId">Drop an operator</p>
-                    </article>
-                  </template>
-                  <template x-for="operator in $store.demo.freeOperators()" :key="operator.id">
-                    <article
-                      class="operator-card is-loose"
-                      :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'operator' && $store.demo.dropHint.id === operator.id }"
-                      data-drop="operator"
-                      :data-id="operator.id"
-                      @pointerdown="$store.demo.beginPointerDrag($event, 'operator', operator.id)"
-                    >
-                      <p class="drag-title" x-text="operator.name"></p>
-                      <p class="drag-sub" x-text="$store.demo.operatorSeatText(operator.id)"></p>
-                    </article>
-                  </template>
-                </div>
-              </div>
-              <div class="pair-col">
-                <p class="board-label">Sites</p>
-                <div class="site-board">
-                  <template x-for="site in $store.demo.sites" :key="site.id">
-                    <article
-                      class="site-drop"
-                      :class="{ 'is-target': $store.demo.dropHint && $store.demo.dropHint.kind === 'site' && $store.demo.dropHint.id === site.id }"
-                      data-drop="site"
-                      :data-id="site.id"
-                    >
-                      <h3 x-text="site.name"></h3>
-                      <p class="drag-sub">
-                        <span x-text="site.address"></span><span x-show="site.large"> · large</span>
-                      </p>
-                      <div class="service-tags">
-                        <template x-for="service in site.services" :key="service">
-                          <span class="tag" :class="'tag-' + service" x-text="service"></span>
-                        </template>
-                      </div>
-                      <template x-for="assignment in $store.demo.assignmentsForSite(site.id)" :key="assignment.id">
-                        <div class="pair-pill">
-                          <span x-text="$store.demo.assignmentLabel(assignment)"></span>
-                          <button type="button" class="text-btn" aria-label="Unassign" @pointerdown.stop @click="$store.demo.unassignMachine(assignment.machineId)">Off</button>
-                        </div>
-                      </template>
-                      <p class="drag-sub drop-hint" x-show="!$store.demo.assignmentsForSite(site.id).length">Drop a machine</p>
-                    </article>
-                  </template>
-                </div>
-              </div>
-            </div>
-          </section>
+      <p class="banner" role="alert" x-show="$store.demo.notice" x-text="$store.demo.notice"></p>
 
-          <section class="section readout" id="readout" aria-labelledby="readout-heading">
-            <div class="section-h">
-              <div>
-                <p class="eyebrow">Shift record</p>
-                <h2 id="readout-heading">What each machine logged</h2>
-                <p>Clock-ins from the phone land here in order. This is the shape of the later billing review.</p>
-              </div>
-            </div>
-            <div class="summary-row" x-show="$store.demo.shiftSummaries().length">
-              <template x-for="summary in $store.demo.shiftSummaries()" :key="summary.id">
-                <p class="summary-chip">
-                  <span x-text="summary.label"></span>
-                  <span class="muted" x-text="summary.detail"></span>
-                </p>
-              </template>
-            </div>
-            <p class="empty" x-show="!$store.demo.readout().length">No site logs yet. Clock in on the phone to build the shift record.</p>
-            <ol class="log" x-show="$store.demo.readout().length">
-              <template x-for="row in $store.demo.readout()" :key="row.id">
-                <li>
-                  <div>
-                    <p class="row-title" x-text="row.site"></p>
-                    <p class="muted" x-text="row.who + ' · ' + row.machine"></p>
-                  </div>
-                  <p><span class="k">In</span> <span x-text="row.timeIn"></span></p>
-                  <p><span class="k">Out</span> <span x-text="row.timeOut"></span></p>
-                  <p><span class="k">Billable</span> <span x-text="row.billable"></span></p>
-                  <p class="detail" x-text="row.detail"></p>
-                </li>
-              </template>
-            </ol>
-
-            <div class="sms" id="sms-preview">
-              <p class="eyebrow">Client SMS preview</p>
-              <p class="sms-line" x-text="$store.demo.latestSms() || $store.demo.sampleSms()"></p>
-              <p class="muted" x-show="!$store.demo.latestSms()">Example only. Nothing is sent.</p>
-              <p class="muted" x-show="$store.demo.latestSms()">Preview of the latest clock-in. Nothing is sent.</p>
-            </div>
-          </section>
-        </main>
-
-        <aside class="phone-column" id="driver-phone">
-          <div class="preview-bar">
-            <p class="eyebrow">Driver preview</p>
-            <p class="preview-help">This switch is for the walkthrough. A driver only sees their own jobs.</p>
-            <label>
-              Operator
-              <select x-model="$store.demo.operatorId" @change="$store.demo.onOperatorChange()">
-                <template x-for="operator in $store.demo.operators" :key="operator.id">
-                  <option :value="operator.id" x-text="operator.name"></option>
-                </template>
-              </select>
-            </label>
-          </div>
-
-          <div class="bezel">
-            <div class="phone-screen">
-              <div class="status">
-                <span x-text="$store.demo.clock || '—'"></span>
-                <span>Kakwa</span>
-                <span>LTE</span>
-              </div>
-              <div class="who">
-                <p class="who-name" x-text="$store.demo.operatorName($store.demo.operatorId)"></p>
-                <p class="who-role" x-text="$store.demo.roleLabel()"></p>
-                <p class="who-machine" x-show="$store.demo.activeShift()" x-text="$store.demo.shiftMachineLabel()"></p>
-              </div>
-              <p class="toast" x-show="$store.demo.notice" x-text="$store.demo.notice"></p>
-
-              <template x-if="!$store.demo.activeShift()">
-                <section class="shift-start">
-                  <h2>Start shift</h2>
-                  <p class="phone-copy">Enter the hour meter before the first site. A reading below the last one is rejected.</p>
-                  <label>
-                    Machine
-                    <select x-model="$store.demo.draftMachineId" @change="$store.demo.syncPupDefault()">
-                      <template x-for="machine in $store.demo.machines" :key="machine.id">
-                        <option :value="machine.id" x-text="machine.name"></option>
-                      </template>
-                    </select>
-                  </label>
-                  <p class="phone-copy" x-show="$store.demo.selectedMachine() && $store.demo.selectedMachine().implementId" x-text="$store.demo.implementName($store.demo.selectedMachine().implementId)"></p>
-                  <label class="check" x-show="$store.demo.selectedMachine() && $store.demo.selectedMachine().hasPup">
-                    <input type="checkbox" x-model="$store.demo.draftPup" />
-                    Pup attached
-                  </label>
-                  <p class="meter" x-show="$store.demo.selectedMachine()">
-                    Last meter
-                    <strong x-text="$store.demo.selectedMachine().lastHours.toFixed(1)"></strong>
-                  </p>
-                  <label>
-                    Starting hours
-                    <input
-                      type="number"
-                      inputmode="decimal"
-                      min="0"
-                      step="0.1"
-                      placeholder="4821.0"
-                      x-model="$store.demo.draftStartHours"
-                      @keydown.enter="$store.demo.startShift()"
-                    />
-                  </label>
-                  <p class="form-error" x-show="$store.demo.hourError" x-text="$store.demo.hourError" role="alert"></p>
-                  <button type="button" class="clock-in" @click="$store.demo.startShift()">Start shift</button>
-                </section>
-              </template>
-
-              <template x-if="$store.demo.activeShift() && !$store.demo.selectedJob()">
-                <section class="job-list">
-                  <p class="closed" x-show="$store.demo.activeShift()?.endHours != null">
-                    Shift closed · <span x-text="$store.demo.engineHoursLabel()"></span>
-                  </p>
-                  <p class="phone-copy" x-show="!$store.demo.driverJobs.length">Dispatch has not assigned any jobs to this operator.</p>
-                  <template x-for="job in $store.demo.driverJobs" :key="job.id">
-                    <button type="button" class="job-card" @click="$store.demo.selectedJobId = job.id">
-                      <span class="job-pos" x-show="job.position" x-text="'#' + job.position"></span>
-                      <span class="job-copy">
-                        <span class="job-title" x-text="job.title"></span>
-                        <span class="job-meta" x-text="job.meta"></span>
-                      </span>
-                      <span class="job-status" :data-status="$store.demo.statusLabel(job.id)" x-text="$store.demo.statusLabel(job.id)"></span>
-                    </button>
-                  </template>
-                  <div class="end-shift" x-show="$store.demo.canLog()">
-                    <button type="button" class="text-btn light" x-show="!$store.demo.showEndShift" @click="$store.demo.showEndShift = true">End shift</button>
-                    <div x-show="$store.demo.showEndShift">
-                      <label>
-                        Ending hours
-                        <input
-                          type="number"
-                          inputmode="decimal"
-                          min="0"
-                          step="0.1"
-                          x-model="$store.demo.draftEndHours"
-                          @keydown.enter="$store.demo.endShift()"
-                        />
-                      </label>
-                      <p class="form-error" x-show="$store.demo.endError" x-text="$store.demo.endError" role="alert"></p>
-                      <button type="button" class="btn btn-light" @click="$store.demo.endShift()">Save ending hours</button>
-                    </div>
-                  </div>
-                </section>
-              </template>
-
-              <template x-if="$store.demo.activeShift() && $store.demo.selectedJob()">
-                <section class="job-detail">
-                  <button type="button" class="text-btn light back" @click="$store.demo.selectedJobId = null">All jobs</button>
-                  <div class="safety">
-                    <p class="safety-k">Site hazard</p>
-                    <template x-for="hazard in $store.demo.site($store.demo.shownJob().siteId).hazards" :key="hazard">
-                      <p class="safety-line" x-text="hazard"></p>
+      <template x-if="$store.demo.screen === 'plan'">
+      <section class="screen" aria-labelledby="plan-heading">
+        <div class="screen-h">
+          <h1 id="plan-heading">Tonight's plan</h1>
+          <p>Steps run in order. Sites in the same step run at the same time.</p>
+        </div>
+        <p class="empty" x-show="!$store.demo.plan.length">No sites yet. Add the first stop.</p>
+        <ol class="steps">
+          <template x-for="(step, stepIndex) in $store.demo.plan" :key="step.id">
+            <li class="step">
+              <p class="step-k" x-text="'Step ' + (stepIndex + 1)"></p>
+              <template x-for="(stop, siteIndex) in step.sites" :key="stop.id">
+                <article class="card">
+                  <h2 x-text="$store.demo.site(stop.siteId).name"></h2>
+                  <p class="muted" x-text="$store.demo.site(stop.siteId).address"></p>
+                  <div class="tags">
+                    <template x-for="service in $store.demo.site(stop.siteId).services" :key="service">
+                      <span class="tag" :class="'tag-' + service" x-text="service"></span>
                     </template>
                   </div>
-                  <div class="detail-body">
-                    <p class="detail-pos" x-show="$store.demo.positionText($store.demo.shownJob())" x-text="$store.demo.positionText($store.demo.shownJob())"></p>
-                    <h2 x-text="$store.demo.shownJob().title"></h2>
-                    <p class="phone-copy" x-text="$store.demo.site($store.demo.shownJob().siteId).address"></p>
-
-                    <p class="billable" x-show="$store.demo.billableLabel($store.demo.shownJob().id)" x-text="$store.demo.billableLabel($store.demo.shownJob().id)"></p>
-
-                    <div class="clocks">
-                      <button
-                        type="button"
-                        class="clock-in"
-                        x-show="!$store.demo.visits[$store.demo.shownJob().id].clockIn"
-                        @click="$store.demo.clockIn($store.demo.shownJob())"
-                        :disabled="!$store.demo.canLog()"
-                      >Clock in · Arrive on site</button>
-                      <button
-                        type="button"
-                        class="clock-out"
-                        x-show="$store.demo.visits[$store.demo.shownJob().id].clockIn && !$store.demo.visits[$store.demo.shownJob().id].clockOut"
-                        @click="$store.demo.clockOut($store.demo.shownJob())"
-                        :disabled="!$store.demo.canLog()"
-                      >Clock out · Finish job</button>
-                    </div>
-
-                    <div class="workflow" x-show="$store.demo.visits[$store.demo.shownJob().id].clockOut">
-                      <label>
-                        Weather you saw
-                        <textarea
-                          rows="2"
-                          maxlength="160"
-                          placeholder="heavy snow, drifting"
-                          x-model="$store.demo.visits[$store.demo.shownJob().id].weatherNote"
-                          @change="$store.demo.saveWeatherNote($store.demo.shownJob())"
-                        ></textarea>
-                      </label>
-                    </div>
-
-                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'sanding'">
-                      <p class="flow-label">Ice rock spread</p>
-                      <div class="stepper">
-                        <button type="button" aria-label="Less ice rock" @click="$store.demo.bumpIce($store.demo.shownJob().id, -0.5)" :disabled="!$store.demo.canLog()">−</button>
-                        <p>
-                          <strong x-text="Number($store.demo.visits[$store.demo.shownJob().id].iceRock).toFixed(1)"></strong>
-                          <span>yd</span>
-                        </p>
-                        <button type="button" aria-label="More ice rock" @click="$store.demo.bumpIce($store.demo.shownJob().id, 0.5)" :disabled="!$store.demo.canLog()">+</button>
-                      </div>
-                    </div>
-
-                    <div class="workflow" x-show="$store.demo.shownJob().kind === 'hauling'">
-                      <p class="flow-label">Snow loads this visit</p>
-                      <p class="load-count" x-text="$store.demo.visits[$store.demo.shownJob().id].loads"></p>
-                      <button type="button" class="load-plus" @click="$store.demo.bumpLoads($store.demo.shownJob().id, 1)" :disabled="!$store.demo.canLog()">+1 snow load</button>
-                      <button
-                        type="button"
-                        class="text-btn light"
-                        x-show="$store.demo.visits[$store.demo.shownJob().id].loads > 0"
-                        @click="$store.demo.bumpLoads($store.demo.shownJob().id, -1)"
-                        :disabled="!$store.demo.canLog()"
-                      >Remove one</button>
-                      <label>
-                        Job notes
-                        <textarea
-                          rows="3"
-                          maxlength="240"
-                          placeholder="Pile location, dump wait, gate…"
-                          x-model="$store.demo.visits[$store.demo.shownJob().id].notes"
-                          @change="$store.demo.saveNotes()"
-                          :disabled="!$store.demo.canLog()"
-                        ></textarea>
-                      </label>
-                    </div>
+                  <ul class="crew">
+                    <template x-for="seat in stop.crew" :key="seat.machineId">
+                      <li>
+                        <strong x-text="$store.demo.machine(seat.machineId).name"></strong>
+                        <span x-text="$store.demo.machine(seat.machineId).detail"></span>
+                        <span x-text="$store.demo.operatorName(seat.operatorId)"></span>
+                      </li>
+                    </template>
+                  </ul>
+                  <div class="arrows">
+                    <button type="button" @click="$store.demo.moveSite(stepIndex, siteIndex, -1)" :disabled="!$store.demo.canMove(stepIndex, siteIndex, -1)" :aria-label="'Move ' + $store.demo.site(stop.siteId).name + ' earlier'">Up</button>
+                    <button type="button" @click="$store.demo.moveSite(stepIndex, siteIndex, 1)" :disabled="!$store.demo.canMove(stepIndex, siteIndex, 1)" :aria-label="'Move ' + $store.demo.site(stop.siteId).name + ' later'">Down</button>
                   </div>
-                </section>
+                </article>
               </template>
+            </li>
+          </template>
+        </ol>
+        <button type="button" class="primary" @click="$store.demo.startPlan()">Add a site</button>
+      </section>
+      </template>
 
-              </div>
-          </div>
-        </aside>
-      </div>
+      <template x-if="$store.demo.screen === 'site'">
+      <section class="screen" aria-labelledby="site-heading">
+        <button type="button" class="back" @click="$store.demo.back()">Back to plan</button>
+        <div class="screen-h">
+          <p class="kicker">1 · Site</p>
+          <h1 id="site-heading">Which site is next?</h1>
+        </div>
+        <div class="stack">
+          <template x-for="site in $store.demo.sites" :key="site.id">
+            <button
+              type="button"
+              class="tap"
+              @click="$store.demo.pickSite(site.id)"
+              :disabled="$store.demo.siteInPlan(site.id)"
+            >
+              <span class="tap-title" x-text="site.name"></span>
+              <span class="muted" x-text="site.address"></span>
+              <span class="tags">
+                <template x-for="service in site.services" :key="service">
+                  <span class="tag" :class="'tag-' + service" x-text="service"></span>
+                </template>
+              </span>
+              <span class="muted" x-show="$store.demo.siteInPlan(site.id)">Already in the plan</span>
+            </button>
+          </template>
+        </div>
+      </section>
+      </template>
+
+      <template x-if="$store.demo.screen === 'when'">
+      <section class="screen" aria-labelledby="when-heading">
+        <button type="button" class="back" @click="$store.demo.back()">Back</button>
+        <div class="screen-h">
+          <p class="kicker">2 · Timing</p>
+          <h1 id="when-heading" x-text="$store.demo.draftSite().name"></h1>
+          <p>Does this site run at the same time as the current step, or after it?</p>
+        </div>
+        <div class="stack">
+          <button type="button" class="tap" @click="$store.demo.pickWhen('alongside')">
+            <span class="tap-title" x-text="'Alongside step ' + $store.demo.plan.length"></span>
+            <span class="muted">Same time. It needs machines that are not already busy.</span>
+          </button>
+          <button type="button" class="tap" @click="$store.demo.pickWhen('after')">
+            <span class="tap-title">After the current step</span>
+            <span class="muted">A new step. Machines can move on from an earlier site.</span>
+          </button>
+        </div>
+      </section>
+      </template>
+
+      <template x-if="$store.demo.screen === 'machines'">
+      <section class="screen" aria-labelledby="machines-heading">
+        <button type="button" class="back" @click="$store.demo.back()">Back</button>
+        <div class="screen-h">
+          <p class="kicker">3 · Machines</p>
+          <h1 id="machines-heading" x-text="$store.demo.draftSite().name"></h1>
+          <p>Tap every machine this site needs. Only a matching service can be chosen.</p>
+        </div>
+        <div class="stack">
+          <template x-for="machine in $store.demo.machines" :key="machine.id">
+            <button
+              type="button"
+              class="tap"
+              :class="{ 'is-on': $store.demo.draft.machineIds.includes(machine.id) }"
+              @click="$store.demo.toggleMachine(machine.id)"
+              :disabled="$store.demo.machineChoice(machine.id).state === 'unneeded' || $store.demo.machineChoice(machine.id).state === 'taken'"
+            >
+              <span class="tap-title" x-text="machine.name + ' · ' + machine.detail"></span>
+              <span class="tags"><span class="tag" :class="'tag-' + machine.service" x-text="machine.service"></span></span>
+              <span class="muted" x-show="$store.demo.machineChoice(machine.id).state === 'unneeded'">Not needed at this site</span>
+              <span class="muted" x-show="$store.demo.machineChoice(machine.id).state === 'taken'" x-text="'On ' + $store.demo.machineChoice(machine.id).where + ' at this step'"></span>
+              <span class="muted" x-show="$store.demo.machineChoice(machine.id).state === 'coming'" x-text="'Coming from ' + $store.demo.machineChoice(machine.id).where"></span>
+              <span class="muted" x-show="$store.demo.draft.machineIds.includes(machine.id)">Selected</span>
+            </button>
+          </template>
+        </div>
+        <button type="button" class="primary" @click="$store.demo.goToDrivers()" :disabled="!$store.demo.draft.machineIds.length">Choose drivers</button>
+      </section>
+      </template>
+
+      <template x-if="$store.demo.screen === 'drivers'">
+      <section class="screen" aria-labelledby="drivers-heading">
+        <button type="button" class="back" @click="$store.demo.back()">Back</button>
+        <div class="screen-h">
+          <p class="kicker" x-text="'4 · Driver ' + ($store.demo.draft.driverIndex + 1) + ' of ' + $store.demo.draft.machineIds.length"></p>
+          <h1 id="drivers-heading" x-text="$store.demo.currentDriverMachine().name"></h1>
+          <p x-text="$store.demo.currentDriverMachine().detail + ' · ' + $store.demo.draftSite().name"></p>
+        </div>
+        <div class="stack">
+          <template x-for="person in $store.demo.operators" :key="person.id">
+            <button
+              type="button"
+              class="tap"
+              :class="{ 'is-on': $store.demo.draft.operators[$store.demo.currentDriverMachine().id] === person.id }"
+              @click="$store.demo.pickDriver(person.id)"
+              :disabled="$store.demo.driverChoice(person.id, $store.demo.currentDriverMachine().id).state === 'taken'"
+            >
+              <span class="tap-title" x-text="person.name"></span>
+              <span class="muted" x-show="person.usualMachineId === $store.demo.currentDriverMachine().id">Usual operator</span>
+              <span class="muted" x-show="$store.demo.driverChoice(person.id, $store.demo.currentDriverMachine().id).state === 'taken'">Already on a machine in this step</span>
+              <span class="muted" x-show="$store.demo.driverChoice(person.id, $store.demo.currentDriverMachine().id).state === 'coming'" x-text="'Coming from ' + $store.demo.driverChoice(person.id, $store.demo.currentDriverMachine().id).where"></span>
+            </button>
+          </template>
+        </div>
+        <button
+          type="button"
+          class="primary"
+          @click="$store.demo.nextDriver()"
+          :disabled="!$store.demo.draft.operators[$store.demo.currentDriverMachine().id]"
+          x-text="$store.demo.draft.driverIndex < $store.demo.draft.machineIds.length - 1 ? 'Next machine' : 'Review'"
+        ></button>
+      </section>
+      </template>
+
+      <template x-if="$store.demo.screen === 'confirm'">
+      <section class="screen" aria-labelledby="confirm-heading">
+        <button type="button" class="back" @click="$store.demo.back()">Back</button>
+        <div class="screen-h">
+          <p class="kicker">5 · Confirm</p>
+          <h1 id="confirm-heading" x-text="$store.demo.draftSite().name"></h1>
+          <p x-text="$store.demo.placementLabel()"></p>
+        </div>
+        <ul class="crew card">
+          <template x-for="machineId in $store.demo.draft.machineIds" :key="machineId">
+            <li>
+              <strong x-text="$store.demo.machine(machineId).name"></strong>
+              <span x-text="$store.demo.machine(machineId).detail"></span>
+              <span x-text="$store.demo.operatorName($store.demo.draft.operators[machineId])"></span>
+            </li>
+          </template>
+        </ul>
+        <button type="button" class="primary" @click="$store.demo.addToPlan()">Add to the plan</button>
+      </section>
+      </template>
     </div>
-    <p
-      class="drag-ghost"
-      x-show="$store.demo.drag && $store.demo.drag.active"
-      x-cloak
-      x-text="$store.demo.dragLabel()"
-      :style="$store.demo.drag ? 'left:' + $store.demo.drag.x + 'px;top:' + $store.demo.drag.y + 'px' : ''"
-    ></p>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
