@@ -1,0 +1,11 @@
+{
+  "name": "Kakwa Dispatch",
+  "short_name": "Kakwa",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e7efe8",
+  "theme_color": "#1e4d3a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
