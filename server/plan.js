@@ -9,7 +9,7 @@ const TAG = { pushing: 'push_tag', sanding: 'sand_tag', hauling: 'haul_tag' }
 const MACHINE_TYPE = { pushing: 'loader', sanding: 'sander', hauling: 'haul_truck' }
 
 export function getSettings(db) {
-  const rows = db.prepare('SELECT key, value FROM settings').all()
+  const rows = db.prepare('SELECT `key`, `value` FROM settings').all()
   const raw = Object.fromEntries(rows.map((row) => [row.key, row.value]))
   const units = raw.units === 'metric' ? 'metric' : 'imperial'
   return {
@@ -22,17 +22,17 @@ export function getSettings(db) {
 }
 
 export function saveSettings(db, patch) {
-  const current = db.prepare('SELECT key, value FROM settings').all()
+  const current = db.prepare('SELECT `key`, `value` FROM settings').all()
   const raw = Object.fromEntries(current.map((row) => [row.key, row.value]))
   const units = patch.units === 'metric' || patch.units === 'imperial' ? patch.units : raw.units
-  if (patch.units) db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(units, 'units')
+  if (patch.units) db.prepare('UPDATE settings SET `value` = ? WHERE `key` = ?').run(units, 'units')
   if (patch.machineAssignment != null) {
-    db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(patch.machineAssignment ? '1' : '0', 'machine_assignment')
+    db.prepare('UPDATE settings SET `value` = ? WHERE `key` = ?').run(patch.machineAssignment ? '1' : '0', 'machine_assignment')
   }
   if (patch.snowThreshold != null && patch.snowThreshold !== '') {
     const inches = fromDisplay('snow', Number(patch.snowThreshold), units)
     if (!Number.isFinite(inches) || inches < 0) throw new HttpError(400, 'Enter a snow amount.')
-    db.prepare('UPDATE settings SET value = ? WHERE key = ?').run(String(inches), 'snow_threshold_inches')
+    db.prepare('UPDATE settings SET `value` = ? WHERE `key` = ?').run(String(inches), 'snow_threshold_inches')
   }
   return getSettings(db)
 }
@@ -542,7 +542,7 @@ export function pullTrigger(db, date, snowDisplay) {
   const inches = fromDisplay('snow', Number(snowDisplay), settings.units)
   if (!Number.isFinite(inches) || inches < 0) throw new HttpError(400, 'Enter how much snow has fallen.')
   const day = ensureDay(db, date)
-  const threshold = Number(db.prepare(`SELECT value FROM settings WHERE key = 'snow_threshold_inches'`).get().value)
+  const threshold = Number(db.prepare('SELECT `value` FROM settings WHERE `key` = ?').get('snow_threshold_inches').value)
   db.prepare('UPDATE days SET snow_inches = ?, trigger_at = ?, trigger_result = ? WHERE id = ?').run(
     inches, nowIso(), inches < threshold ? 'no_go' : 'go', day.id,
   )
@@ -836,11 +836,12 @@ export function publicTicket(db, ticket) {
   const day = db.prepare('SELECT * FROM days WHERE id = ?').get(ticket.day_id)
   const stints = db.prepare(`SELECT meter_stints.*, machines.code FROM meter_stints
     JOIN machines ON machines.id = meter_stints.machine_id WHERE ticket_id = ?`).all(ticket.id)
-  const crew = db.prepare(`SELECT DISTINCT operators.label AS operator_label, machines.code AS machine_code
+  const crew = db.prepare(`SELECT operators.label AS operator_label, machines.code AS machine_code
     FROM crew
     JOIN operators ON operators.id = crew.operator_id
     LEFT JOIN machines ON machines.id = crew.machine_id
-    WHERE crew.stop_id = ?`).all(ticket.stop_id)
+    WHERE crew.stop_id = ?
+    ORDER BY crew.sort_order`).all(ticket.stop_id)
   const hours = hoursBetween(ticket.clock_in, ticket.clock_out) + hoursBetween(ticket.clock_in_2, ticket.clock_out_2)
   const flatPush = ticket.workflow === 'pushing' && client.billing === 'flat'
   return {

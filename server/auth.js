@@ -92,8 +92,8 @@ function saveChallenge(db, userId, kind, challenge) {
 }
 
 function takeChallenge(db, userId, kind) {
-  const row = db.prepare(`SELECT * FROM challenges WHERE kind = ? AND (user_id IS ? OR user_id = ?) AND expires_at > ?
-    ORDER BY expires_at DESC LIMIT 1`).get(kind, userId, userId, nowIso())
+  const row = db.prepare(`SELECT * FROM challenges WHERE kind = ? AND user_id <=> ? AND expires_at > ?
+    ORDER BY expires_at DESC LIMIT 1`).get(kind, userId, nowIso())
   if (!row) throw new HttpError(400, 'That sign-in step expired. Try again.')
   db.prepare('DELETE FROM challenges WHERE id = ?').run(row.id)
   return row.challenge

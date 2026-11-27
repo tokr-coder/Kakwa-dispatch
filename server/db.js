@@ -1,189 +1,209 @@
-import { mkdirSync } from 'node:fs'
-import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 import webpush from 'web-push'
+import { openMysql } from './mysql.js'
 import { hashPassword } from './passwords.js'
 import { addDays, parseTime, zonedDate } from './time.js'
 
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT
-);
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL,
-  operator_id TEXT,
-  active INTEGER NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS sessions (
-  token TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  expires_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS challenges (
-  id TEXT PRIMARY KEY,
-  user_id TEXT,
-  kind TEXT NOT NULL,
+const SCHEMA = [
+  `CREATE TABLE IF NOT EXISTS settings (
+  \`key\` VARCHAR(191) NOT NULL,
+  \`value\` TEXT,
+  PRIMARY KEY (\`key\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+`CREATE TABLE IF NOT EXISTS users (
+  id VARCHAR(64) NOT NULL,
+  email VARCHAR(191) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(32) NOT NULL,
+  operator_id VARCHAR(64),
+  active INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id),
+  UNIQUE KEY users_email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS sessions (
+  token VARCHAR(128) NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
+  expires_at VARCHAR(40) NOT NULL,
+  PRIMARY KEY (token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS challenges (
+  id VARCHAR(64) NOT NULL,
+  user_id VARCHAR(64),
+  kind VARCHAR(32) NOT NULL,
   challenge TEXT NOT NULL,
-  expires_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS passkeys (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+  expires_at VARCHAR(40) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS passkeys (
+  id VARCHAR(512) NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
   public_key TEXT NOT NULL,
-  counter INTEGER NOT NULL DEFAULT 0,
-  transports TEXT
-);
-CREATE TABLE IF NOT EXISTS recovery_codes (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  code_hash TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  used_at TEXT
-);
-CREATE TABLE IF NOT EXISTS operators (
-  id TEXT PRIMARY KEY,
-  label TEXT NOT NULL,
-  experience TEXT NOT NULL,
-  usual_machine_id TEXT,
-  phone TEXT,
-  email TEXT,
-  notify_job_edges INTEGER,
-  active INTEGER NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS machines (
-  id TEXT PRIMARY KEY,
-  code TEXT NOT NULL,
-  type TEXT NOT NULL,
-  implement TEXT,
-  track_hours INTEGER,
-  track_km INTEGER,
-  last_hours REAL,
-  last_km REAL,
-  active INTEGER NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS clients (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  contact_role TEXT,
-  phone TEXT,
-  email TEXT,
-  billing TEXT NOT NULL,
-  active INTEGER NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS sites (
-  id TEXT PRIMARY KEY,
-  client_id TEXT NOT NULL,
-  name TEXT NOT NULL,
-  address TEXT,
-  push_tag TEXT NOT NULL,
-  sand_tag TEXT NOT NULL,
-  haul_tag TEXT NOT NULL,
-  window_start INTEGER,
-  window_end INTEGER,
-  bylaw_earliest INTEGER,
+  counter INT NOT NULL DEFAULT 0,
+  transports TEXT,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS recovery_codes (
+  id VARCHAR(64) NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  expires_at VARCHAR(40) NOT NULL,
+  used_at VARCHAR(40),
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS operators (
+  id VARCHAR(64) NOT NULL,
+  label VARCHAR(191) NOT NULL,
+  experience VARCHAR(32) NOT NULL,
+  usual_machine_id VARCHAR(64),
+  phone VARCHAR(64),
+  email VARCHAR(191),
+  notify_job_edges INT,
+  active INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS machines (
+  id VARCHAR(64) NOT NULL,
+  code VARCHAR(64) NOT NULL,
+  type VARCHAR(32) NOT NULL,
+  implement VARCHAR(191),
+  track_hours INT,
+  track_km INT,
+  last_hours DOUBLE,
+  last_km DOUBLE,
+  active INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS clients (
+  id VARCHAR(64) NOT NULL,
+  name VARCHAR(191) NOT NULL,
+  contact_role VARCHAR(191),
+  phone VARCHAR(64),
+  email VARCHAR(191),
+  billing VARCHAR(32) NOT NULL,
+  active INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS sites (
+  id VARCHAR(64) NOT NULL,
+  client_id VARCHAR(64) NOT NULL,
+  name VARCHAR(191) NOT NULL,
+  address VARCHAR(255),
+  push_tag VARCHAR(32) NOT NULL,
+  sand_tag VARCHAR(32) NOT NULL,
+  haul_tag VARCHAR(32) NOT NULL,
+  window_start INT,
+  window_end INT,
+  bylaw_earliest INT,
   hazards TEXT,
-  area_sqft REAL,
+  area_sqft DOUBLE,
   notes TEXT,
-  default_sand_yards REAL,
-  active INTEGER NOT NULL DEFAULT 1
-);
-CREATE TABLE IF NOT EXISTS days (
-  id TEXT PRIMARY KEY,
-  work_date TEXT UNIQUE NOT NULL,
+  default_sand_yards DOUBLE,
+  active INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS days (
+  id VARCHAR(64) NOT NULL,
+  work_date VARCHAR(10) NOT NULL,
   weather_note TEXT,
-  snow_inches REAL,
-  trigger_at TEXT,
-  trigger_result TEXT
-);
-CREATE TABLE IF NOT EXISTS stops (
-  id TEXT PRIMARY KEY,
-  day_id TEXT NOT NULL,
-  workflow TEXT NOT NULL,
-  site_id TEXT NOT NULL,
-  from_site_id TEXT,
-  sort_order INTEGER NOT NULL,
-  window_start INTEGER NOT NULL,
-  window_end INTEGER NOT NULL,
-  release_at INTEGER,
-  status TEXT NOT NULL,
+  snow_inches DOUBLE,
+  trigger_at VARCHAR(40),
+  trigger_result VARCHAR(16),
+  PRIMARY KEY (id),
+  UNIQUE KEY days_work_date (work_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS stops (
+  id VARCHAR(64) NOT NULL,
+  day_id VARCHAR(64) NOT NULL,
+  workflow VARCHAR(32) NOT NULL,
+  site_id VARCHAR(64) NOT NULL,
+  from_site_id VARCHAR(64),
+  sort_order INT NOT NULL,
+  window_start INT NOT NULL,
+  window_end INT NOT NULL,
+  release_at INT,
+  status VARCHAR(32) NOT NULL,
   hold_reason TEXT,
-  released_start INTEGER,
-  travel_minutes INTEGER,
-  load_minutes INTEGER,
-  unload_minutes INTEGER,
-  overrun_minutes INTEGER NOT NULL DEFAULT 0,
-  loads INTEGER,
-  driver_note TEXT
-);
-CREATE TABLE IF NOT EXISTS crew (
-  id TEXT PRIMARY KEY,
-  stop_id TEXT NOT NULL,
-  operator_id TEXT NOT NULL,
-  machine_id TEXT,
-  sort_order INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS tickets (
-  id TEXT PRIMARY KEY,
-  day_id TEXT NOT NULL,
-  site_id TEXT NOT NULL,
-  workflow TEXT NOT NULL,
-  stop_id TEXT,
-  clock_in TEXT,
-  clock_out TEXT,
-  clock_in_2 TEXT,
-  clock_out_2 TEXT,
+  released_start INT,
+  travel_minutes INT,
+  load_minutes INT,
+  unload_minutes INT,
+  overrun_minutes INT NOT NULL DEFAULT 0,
+  loads INT,
+  driver_note TEXT,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS crew (
+  id VARCHAR(64) NOT NULL,
+  stop_id VARCHAR(64) NOT NULL,
+  operator_id VARCHAR(64) NOT NULL,
+  machine_id VARCHAR(64),
+  sort_order INT NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS tickets (
+  id VARCHAR(64) NOT NULL,
+  day_id VARCHAR(64) NOT NULL,
+  site_id VARCHAR(64) NOT NULL,
+  workflow VARCHAR(32) NOT NULL,
+  stop_id VARCHAR(64),
+  clock_in VARCHAR(40),
+  clock_out VARCHAR(40),
+  clock_in_2 VARCHAR(40),
+  clock_out_2 VARCHAR(40),
   work_done TEXT,
-  sand_yards REAL,
-  loads INTEGER NOT NULL DEFAULT 0,
-  notes TEXT
-);
-CREATE TABLE IF NOT EXISTS meter_stints (
-  id TEXT PRIMARY KEY,
-  ticket_id TEXT NOT NULL,
-  machine_id TEXT NOT NULL,
-  operator_id TEXT NOT NULL,
-  meter TEXT NOT NULL,
-  start_reading REAL NOT NULL,
-  end_reading REAL,
-  started_at TEXT NOT NULL,
-  ended_at TEXT
-);
-CREATE TABLE IF NOT EXISTS messages (
-  id TEXT PRIMARY KEY,
-  day_id TEXT,
-  user_id TEXT,
-  operator_id TEXT,
-  channel TEXT NOT NULL,
-  kind TEXT NOT NULL,
+  sand_yards DOUBLE,
+  loads INT NOT NULL DEFAULT 0,
+  notes TEXT,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS meter_stints (
+  id VARCHAR(64) NOT NULL,
+  ticket_id VARCHAR(64) NOT NULL,
+  machine_id VARCHAR(64) NOT NULL,
+  operator_id VARCHAR(64) NOT NULL,
+  meter VARCHAR(16) NOT NULL,
+  start_reading DOUBLE NOT NULL,
+  end_reading DOUBLE,
+  started_at VARCHAR(40) NOT NULL,
+  ended_at VARCHAR(40),
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS messages (
+  id VARCHAR(64) NOT NULL,
+  day_id VARCHAR(64),
+  user_id VARCHAR(64),
+  operator_id VARCHAR(64),
+  channel VARCHAR(16) NOT NULL,
+  kind VARCHAR(32) NOT NULL,
   body TEXT NOT NULL,
-  simulated INTEGER NOT NULL DEFAULT 1,
-  delivered INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS push_subscriptions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  endpoint TEXT NOT NULL,
-  keys_json TEXT NOT NULL
-);
-`
+  simulated INT NOT NULL DEFAULT 1,
+  delivered INT NOT NULL DEFAULT 0,
+  created_at VARCHAR(40) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+  `CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id VARCHAR(512) NOT NULL,
+  user_id VARCHAR(64) NOT NULL,
+  endpoint VARCHAR(512) NOT NULL,
+  keys_json TEXT NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC`,
+]
 
-export function openDatabase(file) {
-  if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
-  const db = new DatabaseSync(file)
-  db.exec('PRAGMA foreign_keys = ON')
-  db.exec(SCHEMA)
-  seed(db)
+export function openDatabase() {
+  const db = openMysql()
+  try {
+    for (const statement of SCHEMA) db.exec(statement)
+    seed(db)
+  } catch (error) {
+    db.close()
+    throw error
+  }
   return db
 }
 
 function seed(db) {
-  const existing = db.prepare('SELECT COUNT(*) AS count FROM users').get()
-  if (existing.count > 0) return
+  const existing = db.prepare('SELECT COUNT(*) AS total FROM users').get()
+  if (Number(existing.total) > 0) return
   const keys = webpush.generateVAPIDKeys()
   const settings = {
     units: 'imperial',
@@ -192,7 +212,7 @@ function seed(db) {
     vapid_public: keys.publicKey,
     vapid_private: keys.privateKey,
   }
-  const putSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+  const putSetting = db.prepare('INSERT INTO settings (`key`, `value`) VALUES (?, ?)')
   for (const [key, value] of Object.entries(settings)) putSetting.run(key, value)
 
   const machines = [

@@ -4,12 +4,17 @@ import { startServer } from '../server/app.js'
 import { openDatabase } from '../server/db.js'
 import { addDays, zonedDate } from '../server/time.js'
 
-const db = openDatabase(':memory:')
+const db = openDatabase()
 const server = await startServer(db, 0)
 const base = `http://127.0.0.1:${server.address().port}`
 const today = zonedDate()
 
-after(() => server.close())
+after(() => new Promise((resolve) => {
+  server.close(() => {
+    db.close()
+    resolve()
+  })
+}))
 
 function client() {
   let cookie = ''

@@ -240,9 +240,9 @@ async function route(db, method, url, body, user, token) {
   if (method === 'POST' && path === '/api/push/subscribe') {
     const id = body.endpoint
     if (!id) throw new HttpError(400, 'Missing push subscription.')
-    db.prepare('INSERT INTO push_subscriptions (id, user_id, endpoint, keys_json) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET keys_json = excluded.keys_json').run(
-      id, user.id, body.endpoint, JSON.stringify(body.keys || {}),
-    )
+    const keys = JSON.stringify(body.keys || {})
+    db.prepare(`INSERT INTO push_subscriptions (id, user_id, endpoint, keys_json) VALUES (?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE keys_json = ?`).run(id, user.id, body.endpoint, keys, keys)
     return { body: { saved: true, delivered: false, notice: 'The browser subscription is saved. Pushes are only logged in this build. Nothing is delivered to a phone.' } }
   }
   throw new HttpError(404, 'Not found.')
